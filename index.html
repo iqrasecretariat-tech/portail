@@ -1,1171 +1,216 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Portail Iqrawartaqi</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<style>
-:root{
-  --navy:#0e232d;--navy2:#162f3d;--gold:#ae8f72;--gold-l:#c4a882;--gold-pale:#f5ede4;
-  --white:#fff;--g50:#f8f8f6;--g100:#f0efeb;--g200:#e0dfda;--g400:#9e9c94;
-  --g600:#5c5a54;--g800:#2c2c2a;
-  --ok:#1d9e75;--ok-bg:#e1f5ee;--warn:#ba7517;--warn-bg:#faeeda;
-  --err:#d85a30;--err-bg:#faece7;--info:#185fa5;--info-bg:#e6f1fb;
-  --r:10px;--rl:14px;--sh:0 1px 4px rgba(14,35,45,.08);--shm:0 4px 16px rgba(14,35,45,.12);
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Lato',sans-serif;background:var(--g50);color:var(--g800);font-size:15px;line-height:1.6}
-
-/* ── AUTH ── */
-#auth{min-height:100vh;background:linear-gradient(135deg,#0e232d 0%,#162f3d 60%,#1a3d4f 100%);display:flex;align-items:center;justify-content:center;padding:1.5rem}
-.auth-box{background:#fff;border-radius:var(--rl);padding:2.5rem;width:100%;max-width:420px;box-shadow:var(--shm)}
-.logo-wrap{text-align:center;margin-bottom:2rem}
-.logo-circle{width:72px;height:72px;background:var(--navy);border-radius:50%;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center}
-.logo-circle span{color:var(--gold);font-size:22px;font-weight:700;font-family:serif}
-.logo-wrap h1{color:var(--navy);font-size:22px;font-weight:700;font-family:'Anton',sans-serif;letter-spacing:1px}
-.logo-wrap p{color:var(--g400);font-size:13px;margin-top:4px}
-
-.rtabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--g100);border-radius:var(--r);padding:4px;margin-bottom:1.5rem}
-.rtab{padding:8px 4px;text-align:center;font-size:11px;font-weight:500;color:var(--g600);border-radius:8px;cursor:pointer;border:none;background:transparent;transition:all .2s}
-.rtab span{display:block;font-size:18px;margin-bottom:2px}
-.rtab.active{background:#fff;color:var(--navy);box-shadow:var(--sh)}
-
-.fg{margin-bottom:1rem}
-.fg label{display:block;font-size:13px;font-weight:500;color:var(--g600);margin-bottom:6px}
-.fg input{width:100%;padding:10px 14px;border:1.5px solid var(--g200);border-radius:var(--r);font-size:14px;outline:none;transition:border .2s}
-.fg input:focus{border-color:var(--gold)}
-.btn-main{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
-.btn-main:hover{background:var(--navy2)}
-.btn-main:disabled{opacity:.6;cursor:not-allowed}
-
-.auth-link{text-align:center;margin-top:1rem;font-size:13px;color:var(--g400)}
-.auth-link a{color:var(--navy);cursor:pointer;text-decoration:underline}
-.auth-err{color:var(--err);font-size:13px;text-align:center;padding:8px;background:var(--err-bg);border-radius:8px;margin-top:8px;display:none}
-.auth-ok{color:var(--ok);font-size:13px;text-align:center;padding:8px;background:var(--ok-bg);border-radius:8px;margin-top:8px;display:none}
-
-/* ── RESET PW PANEL ── */
-#panel-reset{display:none}
-#panel-login{display:block}
-
-/* ── APP ── */
-#app{display:none;min-height:100vh}
-.sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:var(--navy);display:flex;flex-direction:column;z-index:100;overflow-y:auto}
-.sb-logo{padding:1.25rem;border-bottom:1px solid rgba(174,143,115,.2);display:flex;align-items:center;gap:10px}
-.sb-mini{width:38px;height:38px;background:rgba(174,143,115,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--gold);font-size:14px;font-weight:700;font-family:serif;flex-shrink:0}
-.sb-logo h2{color:#fff;font-size:15px;font-weight:700;font-family:'Anton',sans-serif;letter-spacing:.5px}
-.sb-logo p{color:var(--gold-l);font-size:11px}
-.sb-nav{flex:1;padding:.75rem 0}
-.sb-sec{margin-bottom:.25rem}
-.sb-sec-title{padding:5px 18px;font-size:10px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:1px;text-transform:uppercase}
-.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;color:rgba(255,255,255,.7);font-size:13px;cursor:pointer;transition:all .15s;border:none;background:none;width:100%;text-align:left;border-left:3px solid transparent}
-.nav-item:hover{background:rgba(174,143,115,.1);color:#fff}
-.nav-item.active{background:rgba(174,143,114,.25);color:#fff;border-left-color:var(--gold)}
-.nav-item .ic{font-size:16px;width:20px;text-align:center}
-.sb-foot{padding:.75rem;border-top:1px solid rgba(174,143,115,.2)}
-.user-pill{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.07);border-radius:var(--r);margin-bottom:6px}
-.uavatar{width:30px;height:30px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--navy);flex-shrink:0}
-.uname{font-size:13px;color:#fff;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.urole{font-size:11px;color:var(--gold-l)}
-.btn-out{width:100%;padding:7px;background:rgba(255,255,255,.07);border:none;border-radius:var(--r);color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;transition:all .2s}
-.btn-out:hover{background:rgba(216,90,48,.2);color:#f09575}
-
-.main{margin-left:240px;min-height:100vh;display:flex;flex-direction:column}
-.topbar{background:#fff;border-bottom:1px solid var(--g200);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:1rem}
-.topbar h1{font-size:19px;font-weight:700;color:var(--navy);font-family:'Anton',sans-serif;letter-spacing:.5px}
-.topbar p{font-size:12px;color:var(--g400);margin-top:2px}
-.tb-actions{display:flex;gap:8px;flex-shrink:0}
-.pgc{padding:1.5rem;flex:1}
-
-/* ── BOUTONS ── */
-.btn{padding:8px 14px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
-.btn-navy{background:var(--navy);color:#fff}.btn-navy:hover{background:var(--navy2)}
-.btn-gold{background:var(--gold);color:#fff}.btn-gold:hover{background:var(--gold-l)}
-.btn-out2{background:transparent;border:1.5px solid var(--g200);color:var(--g600)}.btn-out2:hover{border-color:var(--gold);color:var(--navy)}
-.btn-ok{background:var(--ok);color:#fff}
-.btn-err{background:var(--err);color:#fff}
-.btn-sm{padding:5px 10px;font-size:12px}
-
-/* ── STATS ── */
-.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:1.5rem}
-.sc{background:#fff;border-radius:var(--rl);padding:1.1rem;border:1px solid var(--g200);box-shadow:var(--sh)}
-.sc .si{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px}
-.sc .sl{font-size:11px;color:var(--g400);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
-.sc .sv{font-size:26px;font-weight:700;color:var(--navy);font-family:'Anton',sans-serif;line-height:1.2;margin:3px 0}
-.sc .ss{font-size:11px;color:var(--g400)}
-.gold .si{background:var(--gold-pale)}.navy .si{background:#eeeef8}
-.ok2 .si{background:var(--ok-bg)}.warn2 .si{background:var(--warn-bg)}
-
-/* ── CARD ── */
-.card{background:#fff;border-radius:var(--rl);border:1px solid var(--g200);box-shadow:var(--sh);overflow:hidden;margin-bottom:1.25rem}
-.ch{padding:1rem 1.25rem;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between;gap:.75rem}
-.ch h3{font-size:15px;font-weight:600;color:var(--navy);font-family:'Anton',sans-serif;letter-spacing:.3px}
-.cb{padding:1.25rem}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
-.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem}
-
-/* ── TABLE ── */
-.tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th{font-size:11px;font-weight:600;color:var(--g400);text-transform:uppercase;letter-spacing:.5px;padding:10px 14px;text-align:left;background:var(--g50);border-bottom:1px solid var(--g200);white-space:nowrap}
-td{padding:10px 14px;font-size:13.5px;border-bottom:1px solid var(--g100);vertical-align:middle}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--g50)}
-
-/* ── BADGES ── */
-.badge{display:inline-block;padding:2px 9px;border-radius:100px;font-size:11px;font-weight:600}
-.b-ok{background:var(--ok-bg);color:#0f6e56}
-.b-err{background:var(--err-bg);color:#993c1d}
-.b-warn{background:var(--warn-bg);color:#854f0b}
-.b-info{background:var(--info-bg);color:#0c447c}
-.b-navy{background:#e8f0f3;color:var(--navy)}
-.b-gold{background:var(--gold-pale);color:#7a5c3a}
-
-/* ── AVATAR ── */
-.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
-.av-g{background:var(--gold-pale);color:#7a5c3a}
-.av-n{background:#eeeef8;color:var(--navy)}
-
-/* ── PROGRESS ── */
-.pb-w{background:var(--g100);border-radius:100px;height:7px;overflow:hidden}
-.pb{height:100%;border-radius:100px;background:var(--gold);transition:width .3s}
-.pb.n{background:var(--navy)}.pb.ok{background:var(--ok)}
-
-/* ── FORM ── */
-.form-row{margin-bottom:1rem}
-.form-row label{display:block;font-size:13px;font-weight:500;color:var(--g600);margin-bottom:5px}
-.form-row input,.form-row select,.form-row textarea{width:100%;padding:9px 13px;border:1.5px solid var(--g200);border-radius:var(--r);font-size:13.5px;color:var(--g800);font-family:inherit;background:#fff;transition:border .2s;outline:none}
-.form-row input:focus,.form-row select:focus,.form-row textarea:focus{border-color:var(--gold)}
-.form-row textarea{min-height:90px;resize:vertical}
-.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:.875rem}
-.fa{display:flex;gap:8px;justify-content:flex-end;padding-top:.875rem;border-top:1px solid var(--g100)}
-
-/* ── MODAL ── */
-.mo{position:fixed;inset:0;background:rgba(14,35,45,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem}
-.mo.open{display:flex}
-.md{background:#fff;border-radius:var(--rl);width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:var(--shm)}
-.mh{padding:1rem 1.25rem;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between}
-.mh h3{font-size:15px;font-weight:700;color:var(--navy)}
-.mb{padding:1.25rem}
-.mcl{width:30px;height:30px;border:none;background:var(--g100);border-radius:7px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--g600)}
-.mcl:hover{background:var(--g200)}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:#fff;padding:11px 18px;border-radius:var(--r);font-size:13.5px;z-index:999;display:none;box-shadow:var(--shm);border-left:4px solid var(--gold);max-width:320px}
-.toast.show{display:block}
-
-/* ── TARIFS ── */
-.tarif-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.tarif-card{border:1.5px solid var(--g200);border-radius:var(--r);padding:1rem;cursor:pointer;transition:all .15s;position:relative}
-.tarif-card:hover{border-color:var(--gold);background:var(--gold-pale)}
-.tarif-card.selected{border-color:var(--navy);background:#eeeef8}
-.tc-freq{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.tc-type{font-size:13px;font-weight:600;color:var(--navy)}
-.tc-dur{font-size:12px;color:var(--g400)}
-.tc-prix{font-size:22px;font-weight:700;color:var(--navy);margin-top:6px}
-.tc-prix span{font-size:13px;font-weight:400;color:var(--g400)}
-
-/* ── RECHERCHE ── */
-.sw{position:relative}
-.sw input{padding-left:34px}
-.si2{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--g400);font-size:15px;pointer-events:none}
-
-/* ── NIVEAU BTNS ── */
-.niv-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
-.niv-btn{padding:5px 12px;border-radius:100px;border:1.5px solid var(--g200);background:transparent;font-size:12px;cursor:pointer;transition:all .15s}
-.niv-btn.sel{background:var(--navy);color:#fff;border-color:var(--navy)}
-
-/* ── FICHE ÉLÈVE ── */
-.fiche-header{background:var(--navy);border-radius:var(--rl) var(--rl) 0 0;padding:1.5rem;display:flex;align-items:center;gap:16px}
-.fiche-av{width:56px;height:56px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--navy);flex-shrink:0}
-.fiche-info h2{color:#fff;font-size:18px;font-weight:700}
-.fiche-info p{color:var(--gold-l);font-size:13px}
-.fiche-body{padding:1.25rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-.fiche-row{font-size:13px}
-.fiche-row strong{color:var(--g400);font-size:11px;text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:2px}
-
-/* ── ZOOM ── */
-.zoom-card{background:#eeeef8;border:1px solid rgba(16,16,79,.15);border-radius:var(--r);padding:1rem;display:flex;align-items:center;gap:14px;margin-bottom:.875rem}
-.zic{width:44px;height:44px;background:var(--navy);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-
-/* ── TABS ── */
-.tabs{display:flex;gap:4px;background:var(--g100);padding:4px;border-radius:var(--r);margin-bottom:1.25rem}
-.tab{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--g600);transition:all .15s}
-.tab.active{background:#fff;color:var(--navy);box-shadow:var(--sh)}
-
-/* ── MSG SYSTEM ── */
-.msg-item{display:flex;gap:10px;margin-bottom:12px}
-.msg-bubble{background:var(--g100);border-radius:10px 10px 10px 3px;padding:9px 13px;flex:1}
-.msg-meta{font-size:11px;color:var(--g400);margin-bottom:3px}
-.msg-txt{font-size:13.5px}
-
-/* ── IMPORT ── */
-.drop-zone{border:2px dashed var(--g200);border-radius:var(--r);padding:2rem;text-align:center;cursor:pointer;transition:all .2s}
-.drop-zone:hover,.drop-zone.drag{border-color:var(--gold);background:var(--gold-pale)}
-.drop-zone p{color:var(--g400);font-size:14px;margin-top:.5rem}
-
-@media(max-width:768px){.sidebar{width:200px}.main{margin-left:200px}.g2,.g3,.fgrid{grid-template-columns:1fr}.sg{grid-template-columns:repeat(2,1fr)}}
-.hidden{display:none!important}
-
-/* ── CONFIG FIREBASE ── */
-</style>
-</head>
-<body>
-
-<!-- ======= AUTH ======= -->
-<div id="auth">
-  <div class="auth-box">
-    <div class="logo-wrap">
-      <div style="width:140px;height:140px;margin:0 auto 1.25rem;background:#fff;border-radius:20px;padding:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(14,35,45,.15)">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
-  <defs><style>.cls-1{fill:#0e232d}.cls-2{fill:#af9073}</style></defs>
-  <g>
-    <path class="cls-2" d="M294.64,269.59c-2.29,1-4.46,1.92-6.57,2.8l-1.2.49c-.4.17-.8.32-1.19.49l-67.4-116.74h11.1l65.26,112.96Z"/>
-    <path class="cls-2" d="M312.34,261.47c-2.56,1.25-5.19,2.5-7.86,3.72h-.02s-.02.02-.02.02c-.26.12-.51.24-.77.36l-62.93-108.94h11.05l60.56,104.84Z"/>
-    <path class="cls-2" d="M329.62,252.65c-2.71,1.46-5.4,2.87-8.01,4.21-.14.07-.28.15-.43.22l-58-100.45h10.95l4.27,7.37,51.22,88.65Z"/>
-    <polygon class="cls-2" points="370.67 229.28 338.24 247.92 338.22 247.93 286.9 159.09 286.9 159.04 285.48 156.63 328.75 156.63 370.67 229.28"/>
-    <path class="cls-2" d="M439.22,348l-21.56,37.42-5.65,9.83-5.5,9.57-5.65,9.82-5.55,9.58-5.65,9.82-5.76,9.45-69.87-121.02c2.9-1.24,5.52-2.41,8.03-3.54.3-.13.59-.27.87-.39l45.5,78.76s.05.1.05.1c1.97,3.19,6.58,3.14,8.45-.1.88-1.52.88-3.38,0-4.91l-45.06-78c2.52-1.18,5.17-2.44,8.06-3.86.2-.1.4-.19.6-.29l39.11,67.7s.05.1.05.1c1.97,3.19,6.58,3.14,8.45-.1.88-1.52.88-3.38,0-4.91l-38.79-67.19c2.56-1.29,5.14-2.61,7.86-4.05.12-.06.24-.12.38-.2.08-.04.16-.08.24-.12l33,57.13s.05.09.05.09c1.97,3.19,6.58,3.14,8.45-.09.89-1.53.89-3.39,0-4.92l-32.83-56.83c2.4-1.29,4.53-2.46,6.5-3.57,1.39-.76,2.79-1.53,4.14-2.28.52-.29,1.05-.59,1.58-.88l.06-.03.05-.02c1.79-1.02,9.06-5.44,19.95-12.07l23.58,40.87,5.65,9.72.05.05,5.65,9.77v.05l5.5,9.53Z"/>
-  </g>
-  <g>
-    <path class="cls-2" d="M142.42,297.24c-1.33-.3-2.65-.62-3.95-.97h-.04s-.03-.02-.03-.02c-.7-.17-1.42-.37-2.23-.61-2.41-.69-4.8-1.47-7.18-2.34L50,156.5h11.11l81.32,140.75Z"/>
-    <path class="cls-2" d="M166.28,299.77c-.45.02-.9.02-1.35.02-1.27,0-2.57-.03-3.86-.07h-.17s0,0,0,0c-.95-.03-1.89-.09-2.87-.15-1.02-.07-2.04-.16-3.06-.27l-82.49-142.8h11.06l82.76,143.28Z"/>
-    <path class="cls-2" d="M188.12,298.79c-1.77.17-3.67.32-5.87.46l-.17.02h-.11s-.07,0-.07,0h-.05s-.04,0-.04,0c-.66.04-1.33.07-1.98.11-.71.03-1.42.07-2.12.11-.07,0-.13,0-.19,0l-82.57-143h10.96l4.28,7.38,77.95,134.92Z"/>
-    <path class="cls-2" d="M237.43,289.72c-12,3.23-23.73,5.7-34.9,7.34h-.03s-.04.02-.04.02c-1.18.18-2.36.34-3.61.51h-.05s0,0-.02,0l-80.1-138.65v-.05l-1.43-2.41h43.31l76.87,133.22Z"/>
-    <path class="cls-2" d="M271.11,348.01l-21.58,37.46-5.66,9.83-5.5,9.59-5.66,9.83-5.55,9.58-5.66,9.84-5.76,9.45-52.92-91.65c1.68.22,3.37.43,5.07.61l.18.02.48.05c1.92.21,3.9.36,6.15.51l25.56,44.24s.05.1.05.1c1.97,3.19,6.59,3.14,8.46-.1.88-1.52.88-3.39,0-4.91l-22.5-38.94h.24c1.3,0,2.65-.02,3.98-.04l.95-.02h.48s.09,0,.09,0c1.83-.05,3.53-.12,5.14-.21l14.3,24.76s.05.09.05.09c1.97,3.2,6.59,3.15,8.46-.09.88-1.53.88-3.39,0-4.92l-11.93-20.66c1.13-.12,2.28-.24,3.46-.38.95-.11,1.91-.22,2.87-.34,1.27-.16,2.59-.33,3.98-.55l4.31,7.47s.05.1.05.1c1.97,3.19,6.59,3.14,8.46-.1.88-1.53.88-3.39,0-4.92l-2.46-4.25c11.42-2.07,23.41-4.99,35.69-8.69.71-.22,1.41-.42,2.12-.64l4.55,7.87Z"/>
-  </g>
-  <path class="cls-1" d="M550,156.41l-27.66,47.92-27.67,47.94-14.18-24.57-2.39-4.13-.95-1.65-1.44-2.49c-3.79,2.32-9.26,5.67-17.17,10.54l-50.47,31.22c-3,1.82-8.41,5.11-14.06,8.55-8.76,5.33-18.09,11.02-19.91,12.05-1.92,1.06-3.81,2.13-5.69,3.13-2.25,1.26-4.48,2.49-6.69,3.68-1.2.65-2.39,1.27-3.57,1.91-1.72.93-3.4,1.83-5.11,2.71-.07.03-.13.07-.2.1-2.79,1.46-5.54,2.88-8.28,4.27-1.03.52-2.04,1.03-3.06,1.54-1.93.96-3.86,1.92-5.78,2.84-2.9,1.43-5.79,2.81-8.65,4.15-3,1.43-5.99,2.79-8.95,4.13-2.9,1.32-5.8,2.59-8.66,3.81-.09.03-.17.07-.25.1-4.62,2-9.13,3.86-13.64,5.63-11.67,4.62-22.97,8.57-33.9,11.86-13.22,3.97-25.9,6.98-38.03,9.02-1.45.25-2.89.48-4.33.69-2.06.33-4.1.64-6.12.88-.94.12-1.85.22-2.78.32-2.56.31-5.11.57-7.63.77-1.75.13-3.5.26-5.22.33-1.96.12-3.89.19-5.81.25-.49,0-.98.01-1.47.02-1.27.02-2.54.04-3.79.04-1.96,0-3.89-.03-5.81-.1-1.32-.04-2.63-.1-3.94-.18-2.45-.15-4.83-.31-7.19-.57-.22-.02-.46-.04-.69-.07-4.18-.45-8.25-1.03-12.21-1.77-1.04-.2-2.05-.4-3.08-.62-9.4-1.96-18.27-4.86-26.61-8.64-34.06-15.47-59.46-46.38-75.9-92.17,7.6,12.09,16.66,23.13,27.02,32.8,16.72,15.56,35.68,26.48,55.39,32.14.84.25,1.67.47,2.51.69,4.2,1.11,8.43,1.98,12.69,2.63.46.07.91.13,1.36.2,2.44.32,4.87.58,7.31.75,1.11.08,2.22.13,3.32.18h.01c1.4.04,2.81.08,4.21.08s2.92-.03,4.38-.09c.52-.01,1.03,0,1.54-.02.29,0,.59-.01.88-.01,2.14-.02,4.28-.09,6.44-.18,1.39-.09,2.78-.14,4.19-.22.16-.01.32-.02.48-.03,2.75-.18,5.51-.39,8.27-.7.75-.07,1.48-.13,2.23-.21,2.24-.23,4.49-.5,6.75-.8,1.27-.18,2.55-.36,3.82-.55,12.78-1.88,25.63-4.7,38.45-8.24,11.66-3.22,23.3-7.06,34.82-11.35.15-.06.3-.12.46-.18,4.31-1.61,8.6-3.29,12.84-5.04h.01c3-1.23,5.98-2.5,8.95-3.79,3.02-1.32,6.03-2.65,9.01-4.05,2.91-1.34,5.8-2.7,8.66-4.11,2.97-1.44,5.91-2.9,8.83-4.4,2.84-1.45,5.65-2.93,8.45-4.43,2.49-1.33,4.96-2.69,7.43-4.06l1.16-.67,32.45-18.65,4.13-2.39,60.54-37.3,17.08-10.52-2.39-4.14-2.39-4.12-13.09-22.65h110.68Z"/>
-</svg>
-</div>
-
-    <!-- LOGIN PANEL -->
-    <div id="panel-login">
-      <h1 style="color:var(--navy);font-size:22px;font-weight:700;font-family:'Anton',sans-serif;letter-spacing:1px;text-align:center;margin-bottom:4px">IQRAWARTAQI</h1>
-      <p style="color:var(--g400);font-size:13px;text-align:center;margin-bottom:1.5rem">Votre espace personnel</p>
-      <div class="rtabs">
-        <button class="rtab active" id="rt-eleve" onclick="setRole('eleve')"><span>🎓</span>Élève</button>
-        <button class="rtab" id="rt-parent" onclick="setRole('parent')"><span>👨‍👩‍👧</span>Parent</button>
-        <button class="rtab" id="rt-enseignant" onclick="setRole('enseignant')"><span>📚</span>Enseignant</button>
-        <button class="rtab" id="rt-admin" onclick="setRole('admin')"><span>⚙️</span>Admin</button>
-      </div>
-      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="votre@email.com" autocomplete="email"></div>
-      <div class="fg"><label>Mot de passe</label><input type="password" id="l-pw" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-      <div class="auth-err" id="l-err"></div>
-      <button class="btn-main" id="l-btn" onclick="doLogin()">Se connecter</button>
-      <div class="auth-link"><a onclick="showReset()">Mot de passe oublié ?</a></div>
-    </div>
-
-    <!-- RESET MDP -->
-    <div id="panel-reset">
-      <p style="font-size:13px;color:var(--g600);margin-bottom:1rem">Entrez votre email pour recevoir un lien de réinitialisation.</p>
-      <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="votre@email.com"></div>
-      <div class="auth-err" id="r-err"></div>
-      <div class="auth-ok" id="r-ok"></div>
-      <button class="btn-main" id="r-btn" onclick="doReset()">Envoyer le lien</button>
-      <div class="auth-link"><a onclick="showLogin()">← Retour à la connexion</a></div>
-    </div>
-
-
-  </div>
-</div>
-
-<!-- ======= APP ======= -->
-<div id="app">
-  <aside class="sidebar">
-    <div class="sb-logo">
-      <div style="width:40px;height:40px;flex-shrink:0;background:rgba(255,255,255,0.1);border-radius:8px;padding:3px;display:flex;align-items:center;justify-content:center">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="34" height="34">
-  <defs><style>.s1{fill:#ffffff}.s2{fill:#af9073}</style></defs>
-  <g>
-    <path class="s2" d="M294.64,269.59c-2.29,1-4.46,1.92-6.57,2.8l-1.2.49c-.4.17-.8.32-1.19.49l-67.4-116.74h11.1l65.26,112.96Z"/>
-    <path class="s2" d="M312.34,261.47c-2.56,1.25-5.19,2.5-7.86,3.72h-.02s-.02.02-.02.02c-.26.12-.51.24-.77.36l-62.93-108.94h11.05l60.56,104.84Z"/>
-    <path class="s2" d="M329.62,252.65c-2.71,1.46-5.4,2.87-8.01,4.21-.14.07-.28.15-.43.22l-58-100.45h10.95l4.27,7.37,51.22,88.65Z"/>
-    <polygon class="s2" points="370.67 229.28 338.24 247.92 338.22 247.93 286.9 159.09 286.9 159.04 285.48 156.63 328.75 156.63 370.67 229.28"/>
-    <path class="s2" d="M439.22,348l-21.56,37.42-5.65,9.83-5.5,9.57-5.65,9.82-5.55,9.58-5.65,9.82-5.76,9.45-69.87-121.02c2.9-1.24,5.52-2.41,8.03-3.54.3-.13.59-.27.87-.39l45.5,78.76s.05.1.05.1c1.97,3.19,6.58,3.14,8.45-.1.88-1.52.88-3.38,0-4.91l-45.06-78c2.52-1.18,5.17-2.44,8.06-3.86.2-.1.4-.19.6-.29l39.11,67.7s.05.1.05.1c1.97,3.19,6.58,3.14,8.45-.1.88-1.52.88-3.38,0-4.91l-38.79-67.19c2.56-1.29,5.14-2.61,7.86-4.05.12-.06.24-.12.38-.2.08-.04.16-.08.24-.12l33,57.13s.05.09.05.09c1.97,3.19,6.58,3.14,8.45-.09.89-1.53.89-3.39,0-4.92l-32.83-56.83c2.4-1.29,4.53-2.46,6.5-3.57,1.39-.76,2.79-1.53,4.14-2.28.52-.29,1.05-.59,1.58-.88l.06-.03.05-.02c1.79-1.02,9.06-5.44,19.95-12.07l23.58,40.87,5.65,9.72.05.05,5.65,9.77v.05l5.5,9.53Z"/>
-  </g>
-  <g>
-    <path class="s2" d="M142.42,297.24c-1.33-.3-2.65-.62-3.95-.97h-.04s-.03-.02-.03-.02c-.7-.17-1.42-.37-2.23-.61-2.41-.69-4.8-1.47-7.18-2.34L50,156.5h11.11l81.32,140.75Z"/>
-    <path class="s2" d="M166.28,299.77c-.45.02-.9.02-1.35.02-1.27,0-2.57-.03-3.86-.07h-.17s0,0,0,0c-.95-.03-1.89-.09-2.87-.15-1.02-.07-2.04-.16-3.06-.27l-82.49-142.8h11.06l82.76,143.28Z"/>
-    <path class="s2" d="M188.12,298.79c-1.77.17-3.67.32-5.87.46l-.17.02h-.11s-.07,0-.07,0h-.05s-.04,0-.04,0c-.66.04-1.33.07-1.98.11-.71.03-1.42.07-2.12.11-.07,0-.13,0-.19,0l-82.57-143h10.96l4.28,7.38,77.95,134.92Z"/>
-    <path class="s2" d="M237.43,289.72c-12,3.23-23.73,5.7-34.9,7.34h-.03s-.04.02-.04.02c-1.18.18-2.36.34-3.61.51h-.05s0,0-.02,0l-80.1-138.65v-.05l-1.43-2.41h43.31l76.87,133.22Z"/>
-    <path class="s2" d="M271.11,348.01l-21.58,37.46-5.66,9.83-5.5,9.59-5.66,9.83-5.55,9.58-5.66,9.84-5.76,9.45-52.92-91.65c1.68.22,3.37.43,5.07.61l.18.02.48.05c1.92.21,3.9.36,6.15.51l25.56,44.24s.05.1.05.1c1.97,3.19,6.59,3.14,8.46-.1.88-1.52.88-3.39,0-4.91l-22.5-38.94h.24c1.3,0,2.65-.02,3.98-.04l.95-.02h.48s.09,0,.09,0c1.83-.05,3.53-.12,5.14-.21l14.3,24.76s.05.09.05.09c1.97,3.2,6.59,3.15,8.46-.09.88-1.53.88-3.39,0-4.92l-11.93-20.66c1.13-.12,2.28-.24,3.46-.38.95-.11,1.91-.22,2.87-.34,1.27-.16,2.59-.33,3.98-.55l4.31,7.47s.05.1.05.1c1.97,3.19,6.59,3.14,8.46-.1.88-1.53.88-3.39,0-4.92l-2.46-4.25c11.42-2.07,23.41-4.99,35.69-8.69.71-.22,1.41-.42,2.12-.64l4.55,7.87Z"/>
-  </g>
-  <path class="s1" d="M550,156.41l-27.66,47.92-27.67,47.94-14.18-24.57-2.39-4.13-.95-1.65-1.44-2.49c-3.79,2.32-9.26,5.67-17.17,10.54l-50.47,31.22c-3,1.82-8.41,5.11-14.06,8.55-8.76,5.33-18.09,11.02-19.91,12.05-1.92,1.06-3.81,2.13-5.69,3.13-2.25,1.26-4.48,2.49-6.69,3.68-1.2.65-2.39,1.27-3.57,1.91-1.72.93-3.4,1.83-5.11,2.71-.07.03-.13.07-.2.1-2.79,1.46-5.54,2.88-8.28,4.27-1.03.52-2.04,1.03-3.06,1.54-1.93.96-3.86,1.92-5.78,2.84-2.9,1.43-5.79,2.81-8.65,4.15-3,1.43-5.99,2.79-8.95,4.13-2.9,1.32-5.8,2.59-8.66,3.81-.09.03-.17.07-.25.1-4.62,2-9.13,3.86-13.64,5.63-11.67,4.62-22.97,8.57-33.9,11.86-13.22,3.97-25.9,6.98-38.03,9.02-1.45.25-2.89.48-4.33.69-2.06.33-4.1.64-6.12.88-.94.12-1.85.22-2.78.32-2.56.31-5.11.57-7.63.77-1.75.13-3.5.26-5.22.33-1.96.12-3.89.19-5.81.25-.49,0-.98.01-1.47.02-1.27.02-2.54.04-3.79.04-1.96,0-3.89-.03-5.81-.1-1.32-.04-2.63-.1-3.94-.18-2.45-.15-4.83-.31-7.19-.57-.22-.02-.46-.04-.69-.07-4.18-.45-8.25-1.03-12.21-1.77-1.04-.2-2.05-.4-3.08-.62-9.4-1.96-18.27-4.86-26.61-8.64-34.06-15.47-59.46-46.38-75.9-92.17,7.6,12.09,16.66,23.13,27.02,32.8,16.72,15.56,35.68,26.48,55.39,32.14.84.25,1.67.47,2.51.69,4.2,1.11,8.43,1.98,12.69,2.63.46.07.91.13,1.36.2,2.44.32,4.87.58,7.31.75,1.11.08,2.22.13,3.32.18h.01c1.4.04,2.81.08,4.21.08s2.92-.03,4.38-.09c.52-.01,1.03,0,1.54-.02.29,0,.59-.01.88-.01,2.14-.02,4.28-.09,6.44-.18,1.39-.09,2.78-.14,4.19-.22.16-.01.32-.02.48-.03,2.75-.18,5.51-.39,8.27-.7.75-.07,1.48-.13,2.23-.21,2.24-.23,4.49-.5,6.75-.8,1.27-.18,2.55-.36,3.82-.55,12.78-1.88,25.63-4.7,38.45-8.24,11.66-3.22,23.3-7.06,34.82-11.35.15-.06.3-.12.46-.18,4.31-1.61,8.6-3.29,12.84-5.04h.01c3-1.23,5.98-2.5,8.95-3.79,3.02-1.32,6.03-2.65,9.01-4.05,2.91-1.34,5.8-2.7,8.66-4.11,2.97-1.44,5.91-2.9,8.83-4.4,2.84-1.45,5.65-2.93,8.45-4.43,2.49-1.33,4.96-2.69,7.43-4.06l1.16-.67,32.45-18.65,4.13-2.39,60.54-37.3,17.08-10.52-2.39-4.14-2.39-4.12-13.09-22.65h110.68Z"/>
-</svg>
-</div>
-      <div><h2>Iqrawartaqi</h2><p>Portail scolaire</p></div>
-    </div>
-    <nav class="sb-nav" id="sb-nav"></nav>
-    <div class="sb-foot">
-      <div class="user-pill">
-        <div class="uavatar" id="ua">--</div>
-        <div style="overflow:hidden">
-          <div class="uname" id="un">Utilisateur</div>
-          <div class="urole" id="ur">Rôle</div>
-        </div>
-      </div>
-      <button class="btn-out" onclick="doLogout()">↩ Déconnexion</button>
-    </div>
-  </aside>
-
-  <main class="main">
-    <div id="demo-banner" style="background:#854f0b;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:500;display:none">
-      ⚠️ Mode démonstration — Firebase non configuré. Les connexions ne sont pas sécurisées. <a href="#" onclick="document.getElementById('demo-banner').style.display='none';return false" style="color:#faeeda;margin-left:8px">Fermer</a>
-    </div>
-    <div class="topbar">
-      <div>
-        <h1 id="pg-title">Tableau de bord</h1>
-        <p id="pg-sub">Bienvenue</p>
-      </div>
-      <div class="tb-actions">
-        <button class="btn btn-out2 btn-sm" onclick="openModal('mo-export')">📊 Export Sheets</button>
-        <button class="btn btn-gold btn-sm" onclick="toast('iqra1440.com/inscription pour toute aide')">? Aide</button>
-      </div>
-    </div>
-    <div class="pgc" id="pgc"></div>
-  </main>
-</div>
-
-<!-- ======= MODALS ======= -->
-
-<!-- Rapport de cours -->
-<div class="mo" id="mo-rapport">
-<div class="md">
-  <div class="mh"><h3>📝 Rapport de séance</h3><button class="mcl" onclick="closeModal('mo-rapport')">×</button></div>
-  <div class="mb">
-    <div class="fgrid">
-      <div class="form-row"><label>Élève</label><select id="rp-eleve"></select></div>
-      <div class="form-row"><label>Date</label><input type="date" id="rp-date"></div>
-    </div>
-    <div class="fgrid">
-      <div class="form-row"><label>Matière</label><select id="rp-mat"><option>Arabe</option><option>Qur'an — Tajweed</option><option>Qur'an — Hifz</option><option>Aqidah</option><option>Fiqh</option><option>Sira</option><option>Tazkiya</option><option>Sciences islamiques</option></select></div>
-      <div class="form-row"><label>Durée (min)</label><select id="rp-dur"><option>20</option><option>30</option><option selected>40</option><option>60</option><option>90</option></select></div>
-    </div>
-    <div class="form-row"><label>Contenu étudié</label><input type="text" id="rp-cnt" placeholder="Ex : Chapitre 3 — Les pronoms"></div>
-    <div class="form-row"><label>Présence</label>
-      <div class="niv-wrap" id="nw-pres">
-        <button class="niv-btn sel" onclick="selNiv(this,'pres')">✅ Présent(e)</button>
-        <button class="niv-btn" onclick="selNiv(this,'pres')">❌ Absent(e)</button>
-        <button class="niv-btn" onclick="selNiv(this,'pres')">⚠️ Retard</button>
-      </div>
-    </div>
-    <div class="form-row"><label>Participation</label>
-      <div class="niv-wrap" id="nw-part">
-        <button class="niv-btn" onclick="selNiv(this,'part')">⭐ Faible</button>
-        <button class="niv-btn sel" onclick="selNiv(this,'part')">⭐⭐ Moyen</button>
-        <button class="niv-btn" onclick="selNiv(this,'part')">⭐⭐⭐ Bon</button>
-        <button class="niv-btn" onclick="selNiv(this,'part')">⭐⭐⭐⭐ Excellent</button>
-      </div>
-    </div>
-    <div class="form-row"><label>Devoirs</label><input type="text" id="rp-dev" placeholder="Ex : Exercices p.45-46"></div>
-    <div class="form-row"><label>Observations</label><textarea id="rp-obs" placeholder="Progrès, difficultés, points à retravailler..."></textarea></div>
-    <div class="fa">
-      <button class="btn btn-out2" onclick="closeModal('mo-rapport')">Annuler</button>
-      <button class="btn btn-gold" onclick="saveRapport()">✅ Enregistrer</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Ajouter élève -->
-<div class="mo" id="mo-eleve">
-<div class="md">
-  <div class="mh"><h3>➕ Ajouter un élève</h3><button class="mcl" onclick="closeModal('mo-eleve')">×</button></div>
-  <div class="mb">
-    <div class="fgrid">
-      <div class="form-row"><label>Prénom</label><input type="text" id="ne-prenom"></div>
-      <div class="form-row"><label>Nom</label><input type="text" id="ne-nom"></div>
-    </div>
-    <div class="fgrid">
-      <div class="form-row"><label>Email (pour connexion)</label><input type="email" id="ne-email"></div>
-      <div class="form-row"><label>Âge</label><input type="number" id="ne-age" min="4" max="80"></div>
-    </div>
-    <div class="fgrid">
-      <div class="form-row"><label>Telegram</label><input type="text" id="ne-tg" placeholder="@pseudo"></div>
-      <div class="form-row"><label>Pays</label><input type="text" id="ne-pays"></div>
-    </div>
-    <div class="fgrid">
-      <div class="form-row"><label>Matière</label><select id="ne-mat"><option>Arabe</option><option>Qur'an — Tajweed</option><option>Qur'an — Hifz</option><option>Aqidah</option><option>Sciences islamiques</option></select></div>
-      <div class="form-row"><label>Enseignant(e)</label><select id="ne-prof"></select></div>
-    </div>
-    <div class="fgrid">
-      <div class="form-row"><label>Type de cours</label>
-        <select id="ne-type">
-          <option value="Solo">Solo (individuel)</option>
-          <option value="Duo">Binôme</option>
-          <option value="DuoFratrie">Duo fratrie</option>
-          <option value="Groupe">Groupe (+3)</option>
-        </select>
-      </div>
-      <div class="form-row"><label>Durée séance</label>
-        <select id="ne-dur">
-          <option value="20min">20 minutes</option>
-          <option value="30min">30 minutes</option>
-          <option value="40min" selected>40 minutes</option>
-          <option value="1h">60 minutes</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row"><label>Fréquence (fois/semaine)</label>
-      <select id="ne-freq">
-        <option value="1">1 fois/semaine</option><option value="2" selected>2 fois/semaine</option>
-        <option value="3">3 fois/semaine</option><option value="4">4 fois/semaine</option>
-        <option value="5">5 fois/semaine</option><option value="6">6 fois/semaine</option>
-        <option value="7">7 fois/semaine</option>
-      </select>
-    </div>
-    <div class="form-row" id="tarif-calc" style="background:var(--gold-pale);border-radius:var(--r);padding:.875rem">
-      <strong style="color:var(--navy)">Tarif calculé : </strong><span id="tarif-result" style="font-size:18px;font-weight:700;color:var(--navy)">—</span>
-      <div style="font-size:12px;color:var(--g400);margin-top:3px">+ 8€ frais de session (nouvelle inscription)</div>
-    </div>
-    <div class="fa">
-      <button class="btn btn-out2" onclick="closeModal('mo-eleve')">Annuler</button>
-      <button class="btn btn-navy" onclick="saveEleve()">Ajouter l'élève</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Import CSV -->
-<div class="mo" id="mo-import">
-<div class="md">
-  <div class="mh"><h3>📥 Importer depuis un fichier CSV</h3><button class="mcl" onclick="closeModal('mo-import')">×</button></div>
-  <div class="mb">
-    <p style="font-size:13px;color:var(--g600);margin-bottom:1rem">Le fichier CSV doit avoir les colonnes : Numéro, Prénom, Nom, Email, Téléphone, Telegram, Pays, Matières, Professeurs, Type de cours, Durée, Fqce, Tarif</p>
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()">
-      <div style="font-size:32px">📂</div>
-      <strong>Cliquer pour sélectionner le fichier CSV</strong>
-      <p>ou glisser-déposer ici</p>
-      <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleCSV(this)">
-    </div>
-    <div id="import-preview" style="margin-top:1rem"></div>
-    <div class="fa">
-      <button class="btn btn-out2" onclick="closeModal('mo-import')">Fermer</button>
-      <button class="btn btn-navy hidden" id="btn-confirm-import" onclick="confirmImport()">✅ Importer</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Export Sheets -->
-<div class="mo" id="mo-export">
-<div class="md">
-  <div class="mh"><h3>📊 Exporter vers Google Sheets</h3><button class="mcl" onclick="closeModal('mo-export')">×</button></div>
-  <div class="mb">
-    <div class="form-row">
-      <label>URL du script Apps Script (Web App)</label>
-      <input type="url" id="sh-url" placeholder="https://script.google.com/macros/s/.../exec">
-    </div>
-    <p style="font-size:12px;color:var(--g400);margin-bottom:1rem">Collez l'URL de déploiement Apps Script pour synchroniser automatiquement.</p>
-    <div style="background:var(--g50);border-radius:var(--r);padding:.875rem;margin-bottom:1rem">
-      <p style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:.5rem">Données à exporter :</p>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer"><input type="checkbox" checked id="ex-eleves"> Élèves (243 actifs)</label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:6px;cursor:pointer"><input type="checkbox" checked id="ex-seances"> Séances et présences</label>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" checked id="ex-factures"> Paiements et factures</label>
-    </div>
-    <div class="fa">
-      <button class="btn btn-out2" onclick="exportCSV()">⬇️ Télécharger CSV</button>
-      <button class="btn btn-ok" onclick="syncSheets()">🔄 Synchroniser Sheets</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<!-- Fiche élève détaillée -->
-<div class="mo" id="mo-fiche">
-<div class="md" style="max-width:680px">
-  <div id="fiche-content"></div>
-  <div style="padding:1rem;text-align:right;border-top:1px solid var(--g100)">
-    <button class="btn btn-out2" onclick="closeModal('mo-fiche')">Fermer</button>
-  </div>
-</div>
-</div>
-
-<div class="toast" id="toast-el"></div>
-
-<script>
 // ══════════════════════════════════════════════
-// FIREBASE CONFIG — REMPLACER PAR VOS VRAIES VALEURS
-// Voir guide section 3 pour obtenir ces valeurs
+// IQRAWARTAQI APP — CLEAN VERSION
 // ══════════════════════════════════════════════
-const FB_CONFIG = {
-  apiKey: "AIzaSyBQGwxDavu2P5Xg2q-PJIUVzGdCV_2vFfM",
-  authDomain: "iqrawartaqi-portail.firebaseapp.com",
-  projectId: "iqrawartaqi-portail",
-  storageBucket: "iqrawartaqi-portail.firebasestorage.app",
-  messagingSenderId: "233822341274",
-  appId: "1:233822341274:web:df04ff19fbddd8e193f723"
-};
 
-// Détecter si Firebase est configuré
-const FB_CONFIGURED = !FB_CONFIG.apiKey.includes('VOTRE');
+let curRole = "eleve";
+let curUser = null;
+let curPage = "";
 
-if (FB_CONFIGURED) {
-  firebase.initializeApp(FB_CONFIG);
-} else {
-  console.warn('Firebase non configuré — mode démonstration actif');
+let seances = JSON.parse(localStorage.getItem("iqra_seances") || "[]");
+let factures = JSON.parse(localStorage.getItem("iqra_factures") || "[]");
+let utilisateurs = JSON.parse(localStorage.getItem("iqra_users") || "[]");
+
+function saveLocal(){
+  localStorage.setItem("iqra_seances", JSON.stringify(seances));
+  localStorage.setItem("iqra_factures", JSON.stringify(factures));
+  localStorage.setItem("iqra_users", JSON.stringify(utilisateurs));
 }
 
 // ══════════════════════════════════════════════
-// DONNÉES RÉELLES — 243 ÉLÈVES ACTIFS IQRAWARTAQI
-// ══════════════════════════════════════════════
-const ELEVES_DB = [{"id":"22100","nom":"Mohammed BENKHAYI","responsable":"BENKHAYI Amel","email":"benkhayighomariamel@gmail.com","tel":"(41) 078 773 2970","telegram":"@Oum Mohamed Iqra","pays":"Suisse","matiere":"Aquidah","prof":"Ahsan D","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+FsgsNYodnjhhNWNk","age":"","statut":"ok","commentaire":""},{"id":"22100","nom":"Zeineb BENKHAYI","responsable":"BENKHAYI Amel","email":"benkhayighomariamel@gmail.com","tel":"(41) 078 773 2970","telegram":"@Oum Mohamed Iqra","pays":"Suisse","matiere":"Anglais","prof":"Safora M","type":"Solo","duree":"40min","freq":"2","tarif":"40,00 €","total":"40,00 €","lien":"https://t.me/+m5DoKy9hlVs4ZjY0","age":"","statut":"ok","commentaire":""},{"id":"22102","nom":"Irena PERFETTI","responsable":"PERFETTI Irena","email":"perfettiirena066@gmail.com","tel":"33660683949","telegram":"@UmmHafsaLouisa","pays":"France","matiere":"Qur'aan","prof":"Hawa C","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+9WqxJ2ztu283NWZk","age":"","statut":"ok","commentaire":""},{"id":"22882","nom":"anas sid benallou","responsable":"sid Benallou","email":"","tel":"","telegram":"","pays":"France","matiere":"Arabe - ABY 1B","prof":"Izhak A","type":"DuoFratrie","duree":"40min","freq":"3","tarif":"35,00 €","total":"10,00 €","lien":"https://t.me/+-d7a7O6QhC45YTZk","age":"","statut":"ok","commentaire":""},{"id":"22882","nom":"younes sid benallou","responsable":"sid Benallou","email":"","tel":"","telegram":"","pays":"France","matiere":"Arabe - ABY 1B","prof":"Izhak A","type":"DuoFratrie","duree":"40min","freq":"3","tarif":"35,00 €","total":"10,00 €","lien":"https://t.me/+-d7a7O6QhC45YTZk","age":"","statut":"ok","commentaire":""},{"id":"22107","nom":"Selman ZALTENI","responsable":"ZALTENI Kamelia","email":"kamelia.saadna92@gmail.com","tel":"(33) 627094670","telegram":"@eleve oum selmen kamelia famille","pays":"France","matiere":"10h de quraan","prof":"youssef h","type":"Solo","duree":"30min","freq":"5","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+dMjEQDR1Bp9jY2Y0","age":"","statut":"ok","commentaire":"05/03/2025"},{"id":"22107","nom":"Mohammed ZALTENI","responsable":"ZALTENI Kamelia","email":"kamelia.saadna92@gmail.com","tel":"(33) 627094670","telegram":"@eleve oum selmen kamelia famille","pays":"France","matiere":"10h de quraan","prof":"youssef h","type":"Solo","duree":"30min","freq":"5","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+l2Ca0qDwGDhmN2Zk","age":"","statut":"ok","commentaire":"05/03/2025"},{"id":"22113","nom":"Chemseddine WIAOUF","responsable":"WIAOUF Souad","email":"swiaouf@gmail.com","tel":"(33) 628724622","telegram":"@sousou","pays":"France","matiere":"Programme complet","prof":"Sofiane B","type":"Solo","duree":"40min","freq":"1","tarif":"20,00 €","total":"10,00 €","lien":"https://t.me/+6X1kjTWz8dkzNWQ0","age":"","statut":"ok","commentaire":""},{"id":"22114","nom":"Kelly VIRGINIE","responsable":"KELLY Virginie","email":"Oumniafoulan@gmail.com","tel":"447763333546","telegram":"@UmmAmina","pays":"Royaume Unis","matiere":"Tafsir","prof":"Fatima A","type":"Solo","duree":"1h","freq":"1","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+MCmyz6GsvQ01YzU0","age":"","statut":"ok","commentaire":""},{"id":"22115","nom":"virginie VILAYHONGS","responsable":"VILAYHONGS Virginie","email":"vilayhongs@gmail.com","tel":"33644388902","telegram":"virginie vhz","pays":"France","matiere":"Qur'aan","prof":"Meryem G","type":"Solo","duree":"40min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+iDM0cHb2Zd0zZDBk","age":"","statut":"ok","commentaire":""},{"id":"22118","nom":"fatimata TOURE","responsable":"TOURE Fatimata","email":"fatimata.toure45@gmail.com","tel":"33658724940","telegram":"oumhafsa45","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Groupe","duree":"1h","freq":"5","tarif":"25,00 €","total":"25,00 €","lien":"https://t.me/+chOsSrGjwGg5NzI0","age":"","statut":"ok","commentaire":""},{"id":"22121","nom":"Moussa DRAME","responsable":"THIAM Kerol","email":"kerol.bousso@gmail.com","tel":"","telegram":"@Kerol","pays":"France","matiere":"5h de qu'raan","prof":"Mahmoud A","type":"Solo","duree":"30min","freq":"3","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+RUBifIdac3kzMDk8","age":"","statut":"ok","commentaire":""},{"id":"22121","nom":"Moussa DRAME","responsable":"THIAM Kerol","email":"kerol.bousso@gmail.com","tel":"","telegram":"@Kerol","pays":"France","matiere":"5h arabe","prof":"Mahmoud A","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+RyHF-rT8Eno0NDVk","age":"","statut":"ok","commentaire":""},{"id":"22121","nom":"assia DRAME","responsable":"THIAM Kerol","email":"kerol.bousso@gmail.com","tel":"","telegram":"@Kerol","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"DuoFratrie","duree":"40min","freq":"1","tarif":"12,00 €","total":"12,00 €","lien":"https://t.me/+QkGFlEpPgbcyMGY8","age":"","statut":"ok","commentaire":""},{"id":"22122","nom":"Dawoud THIAM","responsable":"THIAM Aissatou","email":"dawoud.thiam@protonmail.com","tel":"(33) 634319659","telegram":"@Oum Dawoud Safiyah","pays":"France","matiere":"Arabe - ABY 3A","prof":"Mohamed B","type":"Groupe","duree":"1h","freq":"3","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+xJgZ4a4c7Pc0Zjlk","age":"","statut":"ok","commentaire":""},{"id":"22122","nom":"Dawoud THIAM","responsable":"THIAM Aissatou","email":"dawoud.thiam@protonmail.com","tel":"(33) 634319659","telegram":"@Oum Dawoud Safiyah","pays":"France","matiere":"arabe et science religieuse","prof":"Anjem D","type":"Groupe","duree":"30min","freq":"2","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+L7w107ePq_syYmM0","age":"","statut":"ok","commentaire":""},{"id":"22122","nom":"Dawoud THIAM","responsable":"THIAM Aissatou","email":"dawoud.thiam@protonmail.com","tel":"(33) 634319659","telegram":"@Oum Dawoud Safiyah","pays":"France","matiere":"Aquidah - Moutoun","prof":"Anjem D","type":"Duo","duree":"40min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+5GrPnTkXdI1jMmY0","age":"","statut":"ok","commentaire":""},{"id":"22137","nom":"Myriam SIBY","responsable":"SIBY Myriam","email":"siby-myriam@hotmail.fr","tel":"33652214275","telegram":"","pays":"France","matiere":"Arabe - Alphabétisation","prof":"Souhila B","type":"Solo","duree":"40min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+8wRB8FX8fkk0ZTI0","age":"","statut":"ok","commentaire":""},{"id":"22144","nom":"Zeyna SAADALAH","responsable":"SAADALAH Letizia","email":"letsaad@hotmail.com","tel":"(33) 782930269","telegram":"@Letizia Saadalah","pays":"France","matiere":"Programme complet","prof":"Hanane R","type":"Solo","duree":"1h","freq":"1","tarif":"30,00 €","total":"16,67 €","lien":"https://t.me/+x1eXMbo1AlNiODlk","age":"","statut":"ok","commentaire":""},{"id":"22144","nom":"Souhila SAADALAH","responsable":"SAADALAH Letizia","email":"letsaad@hotmail.com","tel":"(33) 782930269","telegram":"@Letizia Saadalah","pays":"France","matiere":"Arabe - Alphabétisation","prof":"Hanane R","type":"Groupe","duree":"1h","freq":"1","tarif":"15,00 €","total":"1,67 €","lien":"https://t.me/+pyD9YGaE1WJmMThk","age":"","statut":"ok","commentaire":""},{"id":"22144","nom":"Jenna SAADALAH","responsable":"SAADALAH Letizia","email":"letsaad@hotmail.com","tel":"(33) 782930269","telegram":"@Letizia Saadalah","pays":"France","matiere":"Arabe - Alphabétisation","prof":"Hanane R","type":"Groupe","duree":"1h","freq":"1","tarif":"15,00 €","total":"1,67 €","lien":"https://t.me/+pyD9YGaE1WJmMThk","age":"","statut":"ok","commentaire":""},{"id":"22144","nom":"Aliya SAADALAH","responsable":"SAADALAH Letizia","email":"letsaad@hotmail.com","tel":"(33) 782930269","telegram":"@Letizia Saadalah","pays":"France","matiere":"Arabe - Alphabétisation","prof":"Hanane R","type":"Groupe","duree":"1h","freq":"1","tarif":"15,00 €","total":"1,67 €","lien":"https://t.me/+pyD9YGaE1WJmMThk","age":"","statut":"ok","commentaire":""},{"id":"22152","nom":"Aminata NIANG","responsable":"NIANG Aminata","email":"kollekane@gmail.com","tel":"(33) 0635342762","telegram":"@Niang Kane","pays":"France","matiere":"Arabe - Alphabétisation","prof":"Meriem P","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+YhRcTKQR8nAwNWM0","age":"","statut":"ok","commentaire":""},{"id":"22158","nom":"Hatim HABIB MOHAMED","responsable":"MOHAMED Sadika","email":"kawth91@hotmail.fr","tel":"","telegram":"@Mohadd","pays":"France","matiere":"10h arabe","prof":"Ebrahem E","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+DeWV7CymPW9mNGFk","age":"","statut":"ok","commentaire":""},{"id":"22608","nom":"Bilel MERIMI","responsable":"MERIMI Bilel","email":"","tel":"33783294958","telegram":"","pays":"France","matiere":"10h de quraan","prof":"Mohamed B","type":"Solo","duree":"30min","freq":"1","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+Vuj6nxDM2285OTBk","age":"","statut":"ok","commentaire":"11/02/2026"},{"id":"22165","nom":"Souleyman BELKORCHIA","responsable":"MATOUF Anissa","email":"nissa-42@hotmail.fr","tel":"(33) 649220538","telegram":"@oumfar","pays":"France","matiere":"Anglais","prof":"Safora M","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+xBD1gV3ZM2M0Yzk0","age":"","statut":"ok","commentaire":""},{"id":"22165","nom":"Tessnim BELKORCHIA","responsable":"MATOUF Anissa","email":"nissa-42@hotmail.fr","tel":"(33) 649220538","telegram":"@oumfar","pays":"France","matiere":"Anglais","prof":"Safora M","type":"Solo","duree":"1h","freq":"1","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+xBD1gV3ZM2M0Yzk0","age":"","statut":"ok","commentaire":""},{"id":"22174","nom":"Tidjane LY","responsable":"LY Fatimata","email":"faly_5@hotmail.com","tel":"(33) 33651662538","telegram":"@Fatimata LY","pays":"France","matiere":"Arabe","prof":"Yacine Z","type":"DuoFratrie","duree":"1h","freq":"2","tarif":"35,00 €","total":"27,22 €","lien":"https://t.me/+2qo8VD8ixDA2NGI0","age":"","statut":"ok","commentaire":""},{"id":"22174","nom":"Madany LY","responsable":"LY Fatimata","email":"faly_5@hotmail.com","tel":"(33) 33651662538","telegram":"@Fatimata LY","pays":"France","matiere":"Arabe","prof":"Yacine Z","type":"DuoFratrie","duree":"1h","freq":"2","tarif":"35,00 €","total":"27,22 €","lien":"https://t.me/+2qo8VD8ixDA2NGI0","age":"","statut":"ok","commentaire":""},{"id":"22175","nom":"Birane LY","responsable":"Ly Aïssata","email":"aissatalylheveder@outlook.fr","tel":"33618215166","telegram":"LyAïssata","pays":"France","matiere":"Arabe","prof":"Ahsan D","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+b0qPRb4Lmbk0Y2Y0","age":"","statut":"ok","commentaire":""},{"id":"22175","nom":"Lamine LY","responsable":"Ly Aïssata","email":"aissatalylheveder@outlook.fr","tel":"33618215166","telegram":"LyAïssata","pays":"France","matiere":"Arabe","prof":"Ahsan D","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+b0qPRb4Lmbk0Y2Y0","age":"","statut":"ok","commentaire":""},{"id":"22181","nom":"Ibtissem MACHTAT","responsable":"LAHNANE MACHTAT Ibtissem","email":"b.machtat@gmail.com","tel":"","telegram":"@Btissem","pays":"France","matiere":"10h de quraan","prof":"Aya Hamdi Bakr H","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+6nt6REklIUE0ZDM0","age":"","statut":"ok","commentaire":"11/09/2024 à 21h41"},{"id":"22182","nom":"Maryam LAFI","responsable":"LAFI Maroua","email":"lafi_maroua@hotmail.fr","tel":"213 774 20 61 44","telegram":"@مروة","pays":"Algérie","matiere":"Qur'aan","prof":"Anfel C","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+Kn6ad4Dpck9hZmU0","age":"","statut":"ok","commentaire":""},{"id":"22194","nom":"Mohammed ANNAB","responsable":"KARIMA","email":"annab.karima.42@gmail.com","tel":"0033646650824","telegram":"https://t.me/compte_supp","pays":"France","matiere":"Qur'aan","prof":"Ahsan D","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+Qzgx7wxYJyA5NTA0","age":"","statut":"ok","commentaire":""},{"id":"22203","nom":"Ismael HOUMADI","responsable":"HOUMADI Nouriati","email":"nouriati1995@hotmail.fr","tel":"(33) 0659 497423","telegram":"@nouriati","pays":"France","matiere":"Qur'aan","prof":"Ahsan D","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+txzG_O69rONhZTQ8","age":"","statut":"ok","commentaire":""},{"id":"22205","nom":"Laila HANSAL","responsable":"HANSAL Laila","email":"hansallaila83@gmail.com","tel":"(33) 635586590","telegram":"@Laila","pays":"France","matiere":"Arabe - Fourqan","prof":"Fatima A","type":"Groupe","duree":"1h","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+SrR_9AIX55BlZjk0","age":"","statut":"ok","commentaire":""},{"id":"22216","nom":"Mellyna HADJAM","responsable":"HADJAM Khalida","email":"khalida84@hotmail.fr","tel":"(33) 778390178","telegram":"@eleve Nana","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+X-ydr3dr6m0xOGVk","age":"","statut":"ok","commentaire":""},{"id":"22216","nom":"Ali HADJAM","responsable":"HADJAM Khalida","email":"khalida84@hotmail.fr","tel":"(33) 778390178","telegram":"@eleve Nana","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+ckY28Sij9wEzNjVk","age":"","statut":"ok","commentaire":""},{"id":"22216","nom":"Myriam HADJAM","responsable":"HADJAM Khalida","email":"khalida84@hotmail.fr","tel":"(33) 778390178","telegram":"@eleve Nana","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+ckY28Sij9wEzNjVk","age":"","statut":"ok","commentaire":""},{"id":"22223","nom":"Sandra GHALI","responsable":"Ghali Sandra","email":"sandra713@hotmail.fr","tel":"(33) 651028501","telegram":",","pays":"Égypte","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"1","tarif":"8,00 €","total":"8,00 €","lien":"https://t.me/+_f9CbFozgQcxMmFk","age":"","statut":"ok","commentaire":""},{"id":"22224","nom":"Tasleem ZEMMOUR","responsable":"GHALI Sabah","email":"sabahghali123@gmail.com","tel":"(33) 07 77 79 23 44","telegram":"@oumtas","pays":"Égypte","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"3","tarif":"","total":"0,00 €","lien":"https://t.me/+ChrYQVVQVRkzZGJk","age":"","statut":"ok","commentaire":""},{"id":"22229","nom":"Aliya FERNANDES PEREIRA","responsable":"FERNANDES PEREIRA Aliya","email":"jeannefernandes12@hotmail.fr","tel":"","telegram":"@عالية","pays":"France","matiere":"Fiqh","prof":"Fatima A","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+9y4MHM-uWiUxYmI0","age":"","statut":"ok","commentaire":""},{"id":"22244","nom":"Oum Maryam DIABY","responsable":"DIABY","email":"toun.binette@gmail.com","tel":"33652434900","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Nadia C","type":"Solo","duree":"1h","freq":"1","tarif":"75,00 €","total":"75,00 €","lien":"https://t.me/+EOqiZeNxkvg1OTg0","age":"","statut":"ok","commentaire":""},{"id":"22251","nom":"Nasma DAHALANE","responsable":"DAHALANE Nasma","email":"nasmaj1@hotmail.com","tel":"(33) 613859042","telegram":"@Nasma Oum Taymiya","pays":"France","matiere":"Arabe","prof":"Meryem G","type":"Duo","duree":"40min","freq":"1","tarif":"17,00 €","total":"17,00 €","lien":"https://t.me/+86Ky-pe-tuBmZmM0","age":"","statut":"ok","commentaire":""},{"id":"22258","nom":"Jenna CHAKRINA","responsable":"Chakrina","email":"Souraya.abdou@icloud.com","tel":"(262) 639 070585","telegram":"https://t.me/UmmJenna","pays":"Mayotte","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"40min","freq":"2","tarif":"40,00 €","total":"40,00 €","lien":"https://t.me/+x61FwlLGBfxlZjQ0","age":"","statut":"ok","commentaire":""},{"id":"22262","nom":"Tenin CAMARA","responsable":"CAMARA Sembala","email":"sembalaCAMARA54@gmail.com","tel":"(33) 761435693","telegram":"@Sembala CAMARA Oum Hetan","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+0PMB9LlVK00xYjI0","age":"","statut":"ok","commentaire":""},{"id":"22285","nom":"Fatoumata CAMARA","responsable":"CAMARA Habibatou","email":"CAMARAhabitou@gmail.com","tel":"(33) 0699 716268","telegram":"@Habibatou CAMARA","pays":"France","matiere":"Arabe - Alphabétisation","prof":"Noura M","type":"Solo","duree":"40min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+SG7yKNBfLX1lZGU0","age":"","statut":"ok","commentaire":""},{"id":"22264","nom":"Diara CAMARA","responsable":"CAMARA Diara","email":"c.diara@yahoo.fr","tel":"33621997691","telegram":"@Diara_UmmZakaria","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Groupe","duree":"1h","freq":"5","tarif":"25,00 €","total":"25,00 €","lien":"https://t.me/+m5DoKy9hlVs4ZjY0","age":"","statut":"ok","commentaire":""},{"id":"22265","nom":"Coumba CAMARA","responsable":"CAMARA Coumba","email":"coumbys@icloud.com","tel":"(33) 767230783","telegram":"https://t.me/gatta2012","pays":"France","matiere":"Arabe - ABY 1B","prof":"Anfel C","type":"Duo","duree":"1h","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+UHE2covCFZs2Mzg0","age":"","statut":"ok","commentaire":""},{"id":"22265","nom":"Coumba CAMARA","responsable":"CAMARA Coumba","email":"coumbys@icloud.com","tel":"(33) 767230783","telegram":"https://t.me/gatta2012","pays":"France","matiere":"Aquidah - 3 fondements","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+TPn1snVoeTQ5ODM0","age":"","statut":"ok","commentaire":""},{"id":"22265","nom":"sylla CAMARA","responsable":"CAMARA Coumba","email":"coumbys@icloud.com","tel":"(33) 767230783","telegram":"https://t.me/gatta2012","pays":"France","matiere":"10h de quraan","prof":"Shimaa S","type":"Solo","duree":"30min","freq":"1","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+L21mPCMQOC81ZDY0","age":"","statut":"ok","commentaire":""},{"id":"22265","nom":"Gatta CAMARA","responsable":"CAMARA Coumba","email":"coumbys@icloud.com","tel":"(33) 767230783","telegram":"https://t.me/gatta2012","pays":"France","matiere":"10h de quraan","prof":"Shimaa S","type":"Solo","duree":"30min","freq":"1","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+6fyXf9Avy_1lODc0","age":"","statut":"ok","commentaire":""},{"id":"22273","nom":"soumia BOUHAJ","responsable":"Bouhaj soumia","email":"sonia.bouhaj@hotmail.fr","tel":"2120667569392","telegram":"@soumiarif44","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Hounayne A","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+EkMn-pbGNCU5N2E0","age":"","statut":"ok","commentaire":"02/12/2025"},{"id":"22283","nom":"Soumeya BENMAHMOUD","responsable":"BENMAHMOUD Sabrina","email":"maurissesabrina9@gmail.com","tel":"(213)799202815","telegram":"@Hsodndu","pays":"Algérie","matiere":"Anglais","prof":"Raihana B","type":"Duo","duree":"1h","freq":"1","tarif":"25,00 €","total":"25,00 €","lien":"https://t.me/+wuBEtDSQJdUwOGI0","age":"","statut":"ok","commentaire":""},{"id":"22283","nom":"Hafsa BENMAHMOUD","responsable":"BENMAHMOUD Sabrina","email":"maurissesabrina9@gmail.com","tel":"(213)799202815","telegram":"@Hsodndu","pays":"Algérie","matiere":"Qur'aan","prof":"Zahia A","type":"Duo","duree":"1h","freq":"5","tarif":"125,00 €","total":"125,00 €","lien":"https://t.me/+JYzWWw6P0EtlZWE0","age":"","statut":"ok","commentaire":""},{"id":"22290","nom":"Nadia BEN ABDELKADER","responsable":"Ben Romdhane","email":"wissal.benabdelkader06@gmail.com","tel":"00 33 6 29 21 13 52","telegram":"","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Kenza Z","type":"Solo","duree":"30min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+TP_hRSGocSM3ZGI0","age":"","statut":"ok","commentaire":""},{"id":"22290","nom":"Iyed BEN ABDELKADER","responsable":"Ben Romdhane","email":"wissal.benabdelkader06@gmail.com","tel":"00 33 6 29 21 13 52","telegram":"","pays":"France","matiere":"Arabe","prof":"Abdelmalek","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"","lien":"https://t.me/+lvpRRcsKDKwxNzE0","age":"","statut":"ok","commentaire":""},{"id":"22295","nom":"Ismaîl LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"10h arabe","prof":"Ebrahem E","type":"Solo","duree":"","freq":"","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+xwWWgfpEvrllMjE0","age":"","statut":"ok","commentaire":""},{"id":"22295","nom":"Adem LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"40min","freq":"5","tarif":"100,00 €","total":"75,00 €","lien":"https://t.me/+aJqRBe2bjKM1NjNk","age":"","statut":"ok","commentaire":""},{"id":"22295","nom":"Ismaîl LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Arabe","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"5","tarif":"75,00 €","total":"75,00 €","lien":"https://t.me/+Q-8PwH9R3YMxYmJk","age":"","statut":"ok","commentaire":""},{"id":"22295","nom":"Adem LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Arabe","prof":"Bastien T","type":"Solo","duree":"30min","freq":"3","tarif":"45,00 €","total":"33,75 €","lien":"https://t.me/+ZIRr6Y3q1bk4ODlk","age":"","statut":"ok","commentaire":""},{"id":"22295","nom":"ismail LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Qur'aan","prof":"youssef h","type":"Solo","duree":"30min","freq":"1","tarif":"3,75 €","total":"3,75 €","lien":"https://t.me/+1MykPe_5NnMxNGJk","age":"","statut":"ok","commentaire":"05/06/2026"},{"id":"22301","nom":"Camille ANDRADE","responsable":"ANDRADE Camille","email":"andradecamille28@gmail.com","tel":"(33) 605403751","telegram":"@Camille","pays":"France","matiere":"Arabe","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+Vrhjn3NFkQ9iZjQ0","age":"","statut":"ok","commentaire":""},{"id":"22301","nom":"Camille ANDRADE","responsable":"ANDRADE Camille","email":"andradecamille28@gmail.com","tel":"(33) 605403751","telegram":"@Camille","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+KT4oxqoQ9k03MTg0","age":"","statut":"ok","commentaire":""},{"id":"22304","nom":"Inas ALFEINE","responsable":"ALFEINE Inas","email":"nassyb269@gmail.com","tel":"(33) 616604231","telegram":"@Inas ALF","pays":"France","matiere":"Arabe","prof":"Meryem G","type":"Duo","duree":"40min","freq":"1","tarif":"17,00 €","total":"17,00 €","lien":"https://t.me/+86Ky-pe-tuBmZmM0","age":"","statut":"ok","commentaire":""},{"id":"22320","nom":"Sabrina ABDELKAFI","responsable":"Abdelkafi","email":"nacsab@hotmail.fr","tel":"683665764","telegram":"@n2020055","pays":"France","matiere":"Aquidah - 3 fondements","prof":"Anfel C","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+xp0JLiLID084Y2U8","age":"","statut":"ok","commentaire":"13/07/2025"},{"id":"22325","nom":"ABDELAZIZ OUM ABDELAZIZ","responsable":"Oum Abdelaziz","email":"iqrawartaqiwaratil@gmail.com","tel":"","telegram":"@oumabdelaziz123","pays":"France","matiere":"Arabe","prof":"Meryem G","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+HQr3JJZGVTo5ZDNk","age":"","statut":"ok","commentaire":""},{"id":"22302","nom":"Océane AMDI","responsable":"AMDI Océane","email":"oceane.a@live.fr","tel":"33634372103","telegram":"Océane","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Groupe","duree":"1h","freq":"3","tarif":"25,00 €","total":"","lien":"https://t.me/+x9rxJJn-zDowMWZk","age":"","statut":"ok","commentaire":"04/04/2024 16h24"},{"id":"22327","nom":"Nassima GALOUL","responsable":"Galoul Nassima","email":"galoul.nassima@gmail.com","tel":"33651200103","telegram":"","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Groupe","duree":"1h","freq":"3","tarif":"25,00 €","total":"25,00 €","lien":"https://t.me/+x9rxJJn-zDowMWZk","age":"","statut":"ok","commentaire":"04/04/2024 16h29"},{"id":"22321","nom":"Aboubacar THIAM","responsable":"Thiam Ya","email":"Mirine60200@gmail.com","tel":"33672513469","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Mohamed K","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+itIeUiMglE05MTBk","age":"","statut":"ok","commentaire":""},{"id":"22339","nom":"Djamila SELLAMI","responsable":"SELLAMI Djamila","email":"Minss1507@gmail.com","tel":"33670875292","telegram":"جميلة","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":""},{"id":"22341","nom":"Jennifer CIAPPARA","responsable":"Ciappara Jennifer","email":"jenniferciappara13@gmail.com","tel":"33662820210","telegram":"Umu yehiou","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":"14/04/2024 14h15"},{"id":"22308","nom":"Najet AKAOUCHI","responsable":"Akaouchi Najet","email":"nejmaak@yahoo.fr","tel":"33782213227","telegram":"نجاة","pays":"France","matiere":"Qur'aan","prof":"Kenza Z","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+CVkc93fWMw8zYmE0","age":"","statut":"ok","commentaire":""},{"id":"22344","nom":"Hawa DJOCO","responsable":"Djoco Hawa","email":"fidele.djoco@hotmail.de","tel":"2001090552865","telegram":"@F_hawa","pays":"Égypte","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":""},{"id":"22154","nom":"Nathalie NGOUMOU FOUDA","responsable":"Nathalie","email":"oum.ee@outlook.fr","tel":"(33) 623954334","telegram":"@Nathalie","pays":"France","matiere":"10h arabe","prof":"Linda B","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+l_cCrWEFe3YxNzI8","age":"","statut":"ok","commentaire":""},{"id":"22205","nom":"Laila HANSAL","responsable":"HANSAL Laila","email":"hansallaila83@gmail.com","tel":"(33) 635586590","telegram":"@Laila","pays":"France","matiere":"Arabe - Fourqan","prof":"Fatima A","type":"Groupe","duree":"1h","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+VorTCeDX0qMxZGVk","age":"","statut":"ok","commentaire":""},{"id":"22347","nom":"Samira BRAHMIA","responsable":"Brahmia Samira","email":"SamiraSemedo75@gmail.com","tel":"33652043867","telegram":"","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":"16/04/2024 à 20h50"},{"id":"22348","nom":"Sonia DJOUDI","responsable":"Djoudi Sonia","email":"sodjoudi@airfrance.fr","tel":"33613215273","telegram":"Sonia Djoudi","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":"16/04/2024 à 20h55"},{"id":"22349","nom":"Leila BESSILA","responsable":"bessila leila","email":"salma2lasoli@gmail.com","tel":"33775802429","telegram":"","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":"17/04/2024 à 5h28"},{"id":"22351","nom":"Farida MARROUKI","responsable":"Marrouki Farida","email":"linsoufa@hotmail.fR","tel":"33782903404","telegram":"","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Duo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":"18/04/2024 à 6h36"},{"id":"22355","nom":"Natacha MAGNEZ","responsable":"Magnez Natacha","email":"naty571@hotmail.fr","tel":"33668770379","telegram":"Yousra","pays":"Algérie","matiere":"Qur'aan - Juzz Tabaarak","prof":"Kouate Feinda","type":"Groupe","duree":"40min","freq":"3","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+Russmw8XKyFmMjQ0","age":"","statut":"ok","commentaire":"23/04/2024 à 14h"},{"id":"22357","nom":"Fatiha EL MACHHOUR","responsable":"Fatiha El machlour","email":"fatiha1993elmachhour@gmail.com","tel":"33652836968","telegram":"","pays":"France","matiere":"Qur'aan - Juzz Amma","prof":"Kouate Feinda","type":"Groupe","duree":"1h","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+hpkyhtu2_UNhZDhk","age":"","statut":"ok","commentaire":"23/04/2024 à 14h09"},{"id":"22109","nom":"Yasmine ZAHRAOUI","responsable":"ZAHRAOUI Yassmine","email":"sofia.zhr9@icloud.com","tel":"33769067601","telegram":"@ys_zhrr","pays":"France","matiere":"Qur'aan - Juzz Tabaarak","prof":"Hawa C","type":"Groupe","duree":"1h","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+39o0Cqh8HLI5ZGU8","age":"","statut":"ok","commentaire":"23/04/2024 à 14h20"},{"id":"22361","nom":"Kahina ASTIT","responsable":"Astit Kahina","email":"Astit.kahina@gmail.com","tel":"33620012028","telegram":"","pays":"France","matiere":"Qur'aan - Juzz Amma","prof":"Anfel C","type":"Groupe","duree":"1h","freq":"3","tarif":"10,00 €","total":"10,00 €","lien":"https://t.me/+iWibh5Gd1lJkNjA0","age":"","statut":"ok","commentaire":""},{"id":"22362","nom":"Audrey CALDAS GOMES","responsable":"Caldas gomes Audrey","email":"Audrey.cgomes@gmail.com","tel":"330752020610","telegram":"oum bilal","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":""},{"id":"22364","nom":"Nassima CHEMLI","responsable":"Chemli nassima","email":"f.chemli84@gmail.com","tel":"33671389085","telegram":"Oum tahar","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":""},{"id":"22366","nom":"Sarah BANDEIRA","responsable":"Bandeira Sarah","email":"Anteur.sarah01@gmail.com","tel":"33628226987","telegram":"Umm soulay Wa nour","pays":"Maroc","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+O8GSS11_A6VkMWRk","age":"","statut":"ok","commentaire":"27/04/2024 à 5h17"},{"id":"22112","nom":"Pamela GINIAUX","responsable":"GINIAUX Pamela","email":"p.giniaux@gmail.com","tel":"(33) 685612323","telegram":"@Pamela","pays":"France","matiere":"Arabe - ABY 1A","prof":"Oum Fatima","type":"Solo","duree":"30min","freq":"1","tarif":"100,00 €","total":"100,00 €","lien":"https://t.me/+fXvVv0sBfdlhMjY0","age":"","statut":"ok","commentaire":"28/04/2024 à 21h47"},{"id":"22370","nom":"Néné CISSOKO","responsable":"Cissoko néné","email":"cissokonene54@gmail.com","tel":"221784471425","telegram":"","pays":"Sénégal","matiere":"Qur'aan - Juzz Tabaarak","prof":"Kouate Feinda","type":"Groupe","duree":"40min","freq":"3","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+Russmw8XKyFmMjQ0","age":"","statut":"ok","commentaire":"28/04/2024 à 21h50"},{"id":"22323","nom":"Doua BOUZINA","responsable":"Bouzina Doua","email":"douabouzina3169@gmail.com","tel":"07 66 18 08 65","telegram":"douaa_dz","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Hawa C","type":"Groupe","duree":"1h","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+wBV71_sKJWIwZmM0","age":"","statut":"ok","commentaire":"02/05/2024 à 4h55"},{"id":"22378","nom":"Besma BEN HASSINE","responsable":"Ben Hassine  Besma","email":"mohamed-ali2007@hotmail.fr","tel":"33749826250","telegram":"بسمة بن حسين","pays":"France","matiere":"Qur'aan","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"4","tarif":"0,00 €","total":"0,00 €","lien":"","age":"","statut":"ok","commentaire":"02/05/2024 à 10h37"},{"id":"22370","nom":"Néné CISSOKO","responsable":"Cissoko néné","email":"cissokonene54@gmail.com","tel":"221784471425","telegram":"","pays":"Sénégal","matiere":"Qur'aan","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"4","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+FMWoT-Nn4PE0OGM0","age":"","statut":"ok","commentaire":"02/05/2024 à 15h30"},{"id":"22357","nom":"Fatiha EL MACHHOUR","responsable":"Fatiha El machlour","email":"fatiha1993elmachhour@gmail.com","tel":"33652836968","telegram":"","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Feinda K","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+F4fTEcUmJbllMTNk","age":"","statut":"ok","commentaire":""},{"id":"22388","nom":"Nafeessa SALAMI","responsable":"Salami Nafeessa","email":"snafi4891@gmail.com","tel":"22892605103","telegram":"","pays":"Togo","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Groupe","duree":"1h","freq":"5","tarif":"","total":"0,00 €","lien":"https://t.me/+tauAh3VIgBQ5ZjRk","age":"","statut":"ok","commentaire":"05/05/2024 à 11h47"},{"id":"22338","nom":"Lydia HADIM","responsable":"Hadim Lydia","email":"hadimlydia@outlook.fr","tel":"33764452627","telegram":"","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+xatiAZWbSDswNzI0","age":"","statut":"ok","commentaire":""},{"id":"22196","nom":"Noura JELIDI","responsable":"Jelidi Noura","email":"el-houch@hotmail.fr","tel":"21655448703","telegram":"","pays":"Tunisie","matiere":"Qur'aan - Tashih Tilawa","prof":"Feinda K","type":"Groupe","duree":"30min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+AcXJlz3D15wzNmVk","age":"","statut":"ok","commentaire":"05/05/2024 à 12h50"},{"id":"22177","nom":"Sabri LOUNIS","responsable":"LOUNIS Malika","email":"malikette75@gmail.com","tel":"33651234814","telegram":"Malika L","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Mohamed Harkat","type":"DuoFratrie","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+IuhvuoJ4Cl0zYTlk","age":"","statut":"ok","commentaire":"07/05/2024 09h22"},{"id":"22177","nom":"Nassim LOUNIS","responsable":"LOUNIS Malika","email":"malikette75@gmail.com","tel":"33651234814","telegram":"Malika L","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Mohamed Harkat","type":"DuoFratrie","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+IuhvuoJ4Cl0zYTlk","age":"","statut":"ok","commentaire":"07/05/2024 09h22"},{"id":"22395","nom":"Abderrahmane KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"","matiere":"10h arabe","prof":"Mahmoud A","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+c9tmphsLEYZlYWJk","age":"","statut":"ok","commentaire":""},{"id":"22103","nom":"youcef ZITOUNI","responsable":"ZITOUNI Nadia","email":"nadiazitouni@free.fr","tel":"33695738305","telegram":"@Nadia Zitouni Iqra","pays":"France","matiere":"Qur'aan","prof":"Mohamed L","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+0XJD5Z9Z221iYWRk","age":"","statut":"ok","commentaire":""},{"id":"22225","nom":"noé GHALI","responsable":"Ghali Nawel","email":"nawelghali@gmail.com","tel":"33646548887","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Izhak A","type":"Solo","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+J65G1z5Jj9k0ZDJk","age":"","statut":"ok","commentaire":"04/08/2025 à 12h44"},{"id":"22401","nom":"Valérie ALEMANY","responsable":"ALEMANY Valérie","email":"pous156@live.fr","tel":"33750520465","telegram":"","pays":"France","matiere":"Aquidah - 3 fondements","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"3","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+RR8CCt0D0pZjNmQ8","age":"","statut":"ok","commentaire":"12/05/2024 à 10h26"},{"id":"22402","nom":"yahya ARID","responsable":"arid Mohammed","email":"ummyahya18000@gmail.com","tel":"540572731","telegram":"","pays":"Algérie","matiere":"Programme complet","prof":"Abou Raslan","type":"Solo","duree":"1h","freq":"4","tarif":"120,00 €","total":"120,00 €","lien":"https://t.me/+trVJPEWJ-Qc0MjY0","age":"","statut":"ok","commentaire":""},{"id":"22406","nom":"Mohammed MERIMI","responsable":"MERIMI Mohammed","email":"mmerimi64@gmail.com","tel":"667334696","telegram":"Mohammed Merimi","pays":"France","matiere":"Qur'aan","prof":"Mohamed O","type":"Solo","duree":"1h","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+pp5PAPlDAEplMmI0","age":"","statut":"ok","commentaire":""},{"id":"22325","nom":"ADAM OUM ABDELAZIZ","responsable":"Oum Abdelaziz","email":"iqrawartaqiwaratil@gmail.com","tel":"","telegram":"@oumabdelaziz123","pays":"France","matiere":"Aquidah - Kitab at-tawhid","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+HQr3JJZGVTo5ZDNk","age":"","statut":"ok","commentaire":""},{"id":"22411","nom":"Imane AGOURAM","responsable":"Agouram Imane","email":"","tel":"","telegram":"https://t.me/imaneks","pays":"France","matiere":"Hadith - 40 Nawawi","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+CIbW5B3zaetmNGZk","age":"","statut":"ok","commentaire":"19/05/2024 à 10h54"},{"id":"22163","nom":"Camila MERIMI","responsable":"MERIMI camila","email":"camila.merimi98@gmail.com","tel":"33781812700","telegram":"","pays":"France","matiere":"Tajwid","prof":"Anfel C","type":"Solo","duree":"1h","freq":"1","tarif":"30,00 €","total":"7,50 €","lien":"https://t.me/+xrmogky0IZkyOWNk","age":"","statut":"ok","commentaire":""},{"id":"22412","nom":"Karima CHATIOUI","responsable":"Chatioui Karima","email":"chtkarima@gmail.com","tel":"620792219","telegram":"","pays":"France","matiere":"Arabe - Fourqan","prof":"Fayrouz H","type":"Solo","duree":"1h","freq":"1","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+xEtTbo0zQSlmNjE0","age":"","statut":"ok","commentaire":""},{"id":"22395","nom":"mohamed KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"Aquidah","prof":"Anjem D","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+OdLeJ_3a1btlNmI0","age":"","statut":"ok","commentaire":"Pause 11/07 au 25/07"},{"id":"22395","nom":"Abderahman KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"G1 Mandhouma Tawhid & Imane","prof":"Mahmoud A","type":"Groupe","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+pSyT-lrRNH83ZmM0","age":"","statut":"ok","commentaire":"Pause 11/07 au 25/07"},{"id":"22395","nom":"Mourad KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"aquida","prof":"Anjem D","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+5KbvOYoH9D8yNDk8","age":"","statut":"ok","commentaire":""},{"id":"22395","nom":"mohamed KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"Lom3atoul i3tiqad","prof":"Anjem D","type":"Groupe","duree":"30min","freq":"2","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+UcLMGU703FJkMmNk","age":"","statut":"ok","commentaire":""},{"id":"22395","nom":"mohamed KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"Discussion","prof":"Anjem D","type":"Groupe","duree":"40min","freq":"1","tarif":"10,00 €","total":"10,00 €","lien":"https://t.me/+l-JGdoRoTMwyNzI0","age":"","statut":"ok","commentaire":""},{"id":"22395","nom":"mohamed KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"Sira","prof":"Anjem D","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"23,00 €","lien":"https://t.me/+pWGufeJzlgU2Y2E0","age":"","statut":"ok","commentaire":"Pause 11/07 au 25/07"},{"id":"22395","nom":"bilel KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"10h arabe","prof":"Ebrahem E","type":"Duo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+6yDdTcoRdlE0ODE0","age":"","statut":"ok","commentaire":"07/11/2025"},{"id":"22395","nom":"kheira KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"Aquidah","prof":"Fatmazohra K","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+eNYIjcZZ1e5hYzNk","age":"","statut":"ok","commentaire":""},{"id":"22395","nom":"younous KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"5h arabe","prof":"Salah b","type":"Solo","duree":"","freq":"","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+4oJ9CgDd30I3ZDA0","age":"","statut":"ok","commentaire":""},{"id":"22351","nom":"Farida MARROUKI","responsable":"Marrouki Farida","email":"linsoufa@hotmail.fR","tel":"33782903404","telegram":"","pays":"France","matiere":"Aquidah - Kitab at-tawhid","prof":"Anjem D","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+Xd0jCYZyidlhNmZk","age":"","statut":"ok","commentaire":"26/05/2024 à 12h27"},{"id":"22413","nom":"lina MERABAA","responsable":"merabaa lina","email":"ummabdoullah04@gmail.com","tel":"5 49096933","telegram":": أم عبدالله","pays":"Algérie","matiere":"Aquidah","prof":"Alaa K","type":"Duo","duree":"30min","freq":"1","tarif":"13,00 €","total":"13,00 €","lien":"https://t.me/+jA-DvnoLisg2MmJk","age":"","statut":"ok","commentaire":"26/05/2024 à 12h23"},{"id":"22231","nom":"tasnim ESVAN","responsable":"Esvan Tasnime","email":"tasnimesvan@gmail.com","tel":"212 6 43 06 98 60","telegram":"@TasnimeBintMoustapha","pays":"Maroc","matiere":"Fiqh","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+hde-kvSVelw3NDRk","age":"","statut":"ok","commentaire":"26/05/2024 à 12h30"},{"id":"22408","nom":"Mina SAID","responsable":"SAID Mina","email":"said.mina96@gmail.com","tel":"33766523197","telegram":"Mina SAID","pays":"France","matiere":"Qur'aan - Juzz Amma","prof":"Kouate Feinda","type":"Groupe","duree":"40min","freq":"3","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+7ZZb11LPcqU2YTA8","age":"","statut":"ok<","commentaire":"28/05/2024 à 10h33"},{"id":"22371","nom":"Muhammed BALKISSE NJAPNDOUNKE","responsable":"Umm balqiss Assia","email":"assiou.ily@gmail.com","tel":"","telegram":"Assia","pays":"France","matiere":"Fiqh - Mariage","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+hde-kvSVelw3NDRk","age":"","statut":"ok","commentaire":"29/05/2024 à 16h16"},{"id":"22351","nom":"Farida MARROUKI","responsable":"Marrouki Farida","email":"linsoufa@hotmail.fR","tel":"33782903404","telegram":"","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+b_iQs9lSxrljZDY0","age":"","statut":"ok","commentaire":"31/05/2024 à 23h20"},{"id":"22131","nom":"Ibrahim MAACHE","responsable":"LALAMI Souad","email":"souadlalami99@gmail.com","tel":"33650177161","telegram":"https://t.me/Umm_marya","pays":"France","matiere":"G1 Mandhouma Tawhid & Imane","prof":"Mahmoud A","type":"Groupe","duree":"30min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+pSyT-lrRNH83ZmM0","age":"","statut":"ok","commentaire":""},{"id":"22357","nom":"Fatiha EL MACHHOUR","responsable":"Fatiha El machlour","email":"fatiha1993elmachhour@gmail.com","tel":"33652836968","telegram":"","pays":"France","matiere":"Aquidah - Kitab at-tawhid","prof":"Hanane R","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+Fh7zw7r6exRkMjE0","age":"","statut":"ok","commentaire":"23/06/2024 à 13h12"},{"id":"22357","nom":"Fatiha EL MACHHOUR","responsable":"Fatiha El machlour","email":"fatiha1993elmachhour@gmail.com","tel":"33652836968","telegram":"","pays":"France","matiere":"Al Baqara & Al Imran","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+i2FilmFnI-00ZGM0","age":"","statut":"ok","commentaire":"27/06/2024 à 13h05"},{"id":"22378","nom":"Besma BEN HASSINE","responsable":"Ben Hassine  Besma","email":"mohamed-ali2007@hotmail.fr","tel":"33749826250","telegram":"بسمة بن حسين","pays":"France","matiere":"Al Baqara & Al Imran","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+i2FilmFnI-00ZGM0","age":"","statut":"ok","commentaire":"27/06/2024 à 13h05"},{"id":"22411","nom":"Imane AGOURAM","responsable":"Agouram Imane","email":"","tel":"","telegram":"https://t.me/imaneks","pays":"France","matiere":"Arabe - Expression orale","prof":"Fatima A","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+eyQKENSRNAc1ODdk","age":"","statut":"ok","commentaire":"arret zahia reprise fatima a"},{"id":"22445","nom":"Donia RABAIS","responsable":"RABAI Donia","email":"Donia.rebai@outlook.fr","tel":"614205608","telegram":"Doni","pays":"France","matiere":"10h de quraan","prof":"Aya Hbh H","type":"Solo","duree":"30min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+X1ph58TXDOs2N2Rk","age":"","statut":"ok","commentaire":"06/09/2025"},{"id":"22165","nom":"farah BELKORCHIA","responsable":"MATOUF Anissa","email":"nissa-42@hotmail.fr","tel":"(33) 649220538","telegram":"@oumfar","pays":"France","matiere":"Anglais","prof":"Raihana B","type":"Solo","duree":"40min","freq":"3","tarif":"","total":"0,00 €","lien":"https://t.me/+HzsDt37S9Jg3ZDc0","age":"","statut":"ok","commentaire":"01/07/2024 à 12h43"},{"id":"22447","nom":"Sophia BEN DOUDOUH","responsable":"BEN DOUDOUH Sophia","email":"saromh@hotmail.fr","tel":"212771762230","telegram":"@oummouhamad","pays":"Maroc","matiere":"Al Baqara & Al Imran","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+i2FilmFnI-00ZGM0","age":"","statut":"ok","commentaire":"02/07/2024 à 12h31"},{"id":"22449","nom":"Fatoumata NIAKATÉ","responsable":"NIAKATÉ Fatouma","email":"fatiishoux@hotmail.fR","tel":"650869264","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Anfel C","type":"Groupe","duree":"1h","freq":"3","tarif":"10,00 €","total":"10,00 €","lien":"https://t.me/+iWibh5Gd1lJkNjA0","age":"","statut":"ok","commentaire":"07/07/2024 à 10h51"},{"id":"22551","nom":"Inès GONZALES","responsable":"Gonzalez Inès","email":"gonzalez95800@gmail.com","tel":"07-53-14-13-90","telegram":"OumThawbân da3wasalafiyya","pays":"France","matiere":"Hadith - 40 Nawawi","prof":"Fatima A","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+g_0BiJiomeM5MDlk","age":"","statut":"ok","commentaire":"07/07/2024 à 10h10h59"},{"id":"22308","nom":"Najet AKAOUCHI","responsable":"Akaouchi Najet","email":"nejmaak@yahoo.fr","tel":"33782213227","telegram":"نجاة","pays":"France","matiere":"Hadith - 40 Nawawi","prof":"Fatima A","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+CVkc93fWMw8zYmE0","age":"","statut":"ok","commentaire":"07/07/2024 à 11h06"},{"id":"22347","nom":"Samira BRAHMIA","responsable":"Brahmia Samira","email":"SamiraSemedo75@gmail.com","tel":"33652043867","telegram":"","pays":"France","matiere":"Aquidah","prof":"Anjem D","type":"Groupe","duree":"40min","freq":"2","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+Xd0jCYZyidlhNmZk","age":"","statut":"ok","commentaire":"10/07/2024 à 21h32"},{"id":"22251","nom":"Taymiya CYLLA","responsable":"DAHALANE Nasma","email":"nasmaj1@hotmail.com","tel":"(33) 613859042","telegram":"@Nasma Oum Taymiya","pays":"France","matiere":"Arabe","prof":"Meryem G","type":"Groupe","duree":"40min","freq":"3","tarif":"","total":"0,00 €","lien":"https://t.me/+LHTDMmsws0MyNmZk","age":"","statut":"ok","commentaire":"10/09/2024 à 21h41"},{"id":"22205","nom":"laila HANSAL","responsable":"HANSAL Laila","email":"hansallaila83@gmail.com","tel":"(33) 635586590","telegram":"@Laila","pays":"France","matiere":"10h de quraan","prof":"Omaima E","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+hYdCyJXcPUY0NDhk","age":"","statut":"ok","commentaire":"14/07/2024 à 19h13"},{"id":"23019","nom":"ibrahim HANSAL","responsable":"ibrahim hansal","email":"","tel":"","telegram":"","pays":"","matiere":"Arabe","prof":"Mohamed B","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+xZS1Ja6gsns0MWU0","age":"","statut":"ok","commentaire":"14/04/2026"},{"id":"22100","nom":"Amel BENKHAYI","responsable":"BENKHAYI Amel","email":"benkhayighomariamel@gmail.com","tel":"(41) 078 773 2970","telegram":"@Oum Mohamed Iqra","pays":"Suisse","matiere":"Aquidah - Kitab at-tawhid","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+bLSdlWUcdboxN2E0","age":"","statut":"ok","commentaire":""},{"id":"22116","nom":"Naïra VERHELST","responsable":"VERHELST Salim","email":"naira.salime@gmail.com","tel":"(262) 639095486","telegram":"https://t.me/NairaOumZayd","pays":"Maroc","matiere":"Anglais","prof":"Safora M","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+CWBRkyTPubwyMWU0","age":"","statut":"ok","commentaire":"11/08/2024 à 13h"},{"id":"22194","nom":"Mohammed ANNAB","responsable":"KARIMA","email":"annab.karima.42@gmail.com","tel":"0033646650824","telegram":"https://t.me/compte_supp","pays":"France","matiere":"Discussion","prof":"Ahsan D","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+l-JGdoRoTMwyNzI0","age":"","statut":"ok","commentaire":""},{"id":"22262","nom":"hetan CAMARA","responsable":"CAMARA Sembala","email":"sembalaCAMARA54@gmail.com","tel":"(33) 761435693","telegram":"@Sembala CAMARA Oum Hetan","pays":"France","matiere":"Tadjwid - Nouraniya","prof":"Bouthayna A","type":"DuoFratrie","duree":"30min","freq":"2","tarif":"17,50 €","total":"17,50 €","lien":"https://t.me/+NommuLAAZus3NmVk","age":"","statut":"ok","commentaire":""},{"id":"22346","nom":"khadija NEGUEZ","responsable":"Farkh Jamila","email":"Djam22@hotmail.fr","tel":"21627779574","telegram":"@Jamila_OumLoqman","pays":"Tunisie","matiere":"Arabe","prof":"Anfel C","type":"Groupe","duree":"40min","freq":"3","tarif":"150,00 €","total":"158,00 €","lien":"https://t.me/+cB0PafNvFCAzYzI0","age":"","statut":"ok","commentaire":""},{"id":"22121","nom":"laila DRAMÉ","responsable":"THIAM Kerol","email":"kerol.bousso@gmail.com","tel":"","telegram":"@Kerol","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"DuoFratrie","duree":"40min","freq":"1","tarif":"12,00 €","total":"12,00 €","lien":"https://t.me/+QkGFlEpPgbcyMGY8","age":"","statut":"ok","commentaire":"23/08/2024 à 11h28"},{"id":"22183","nom":"Mehdi KOUSSA","responsable":"KOUSSA Aicha","email":"amerimi@yahoo.fr","tel":"33769584960","telegram":"Mellina","pays":"France","matiere":"10h arabe","prof":"Mahmoud A","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+xn7gvH6dxNQxMWE0","age":"","statut":"ok","commentaire":"01/09/2024 à 21h17"},{"id":"22194","nom":"Karima ANNAB","responsable":"KARIMA","email":"annab.karima.42@gmail.com","tel":"0033646650824","telegram":"https://t.me/compte_supp","pays":"France","matiere":"Qur'aan","prof":"Nadia C","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+2IS40L4ZluMyZGNk","age":"","statut":"ok","commentaire":""},{"id":"22321","nom":"Ibrahim THIAM","responsable":"Thiam Ya","email":"Mirine60200@gmail.com","tel":"33672513469","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Ahsan D","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+eNCj_AtpOSsxYjc0","age":"","statut":"ok","commentaire":"07/09/2024 à 21h48"},{"id":"22321","nom":"Falou THIAM","responsable":"Thiam Ya","email":"Mirine60200@gmail.com","tel":"33672513469","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Ahsan D","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+kfXCIhdXsz02NDU8","age":"","statut":"ok","commentaire":"07/09/2024 à 21h48"},{"id":"22346","nom":"Jamila FARKH","responsable":"Farkh Jamila","email":"Djam22@hotmail.fr","tel":"21627779574","telegram":"@Jamila_OumLoqman","pays":"Tunisie","matiere":"Qur'aan","prof":"Anfel C","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+DaRulyG_zVdlNTQ0","age":"","statut":"ok","commentaire":""},{"id":"22402","nom":"Afnan ARID","responsable":"arid Mohammed","email":"ummyahya18000@gmail.com","tel":"540572731","telegram":"","pays":"Algérie","matiere":"Arabe","prof":"Ahlam Hasan","type":"Solo","duree":"40min","freq":"1","tarif":"20,00 €","total":"20,00 €","lien":"https://t.me/+LSX3IyjIETUyZTI0","age":"","statut":"ok","commentaire":""},{"id":"22181","nom":"Ouneys MACHTAT","responsable":"LAHNANE MACHTAT Ibtissem","email":"b.machtat@gmail.com","tel":"","telegram":"@Btissem","pays":"France","matiere":"10h de quraan","prof":"Moaz H","type":"Solo","duree":"40min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+_4eJz2ureCA4YmU0","age":"","statut":"ok","commentaire":"13/09/2024 à 22h31"},{"id":"22295","nom":"Ismail LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Qur'aan","prof":"Moaz H","type":"Solo","duree":"30min","freq":"1","tarif":"3,75 €","total":"3,75 €","lien":"https://t.me/+mNIIs2iUKr85YTk0","age":"","statut":"ok","commentaire":"05/06/2026"},{"id":"22295","nom":"ismail LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Arabe","prof":"Mohamed s","type":"Solo","duree":"30min","freq":"1","tarif":"3,75 €","total":"3,75 €","lien":"https://t.me/+ezSV-4A3OjtkNWU0","age":"","statut":"ok","commentaire":"05/06/2026"},{"id":"22158","nom":"Mohamed SADIKA","responsable":"MOHAMED Sadika","email":"kawth91@hotmail.fr","tel":"","telegram":"@Mohadd","pays":"France","matiere":"Aquidah","prof":"Terence D","type":"Groupe","duree":"30min","freq":"2","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+qqU8xlNE6bI1Nzhk","age":"","statut":"ok","commentaire":"11/10/2024 à 20h23"},{"id":"22229","nom":"Jeanne FERNANDES PEREIRA","responsable":"FERNANDES PEREIRA Aliya","email":"jeannefernandes12@hotmail.fr","tel":"","telegram":"@عالية","pays":"France","matiere":"Arabe - Médine","prof":"Oum Fatima","type":"Duo","duree":"1h","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+kKEjvtdiuegyZmVk","age":"","statut":"ok","commentaire":""},{"id":"22321","nom":"Aboubacar THIAM","responsable":"Thiam Ya","email":"Mirine60200@gmail.com","tel":"33672513469","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Izhak A","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+itIeUiMglE05MTBk","age":"","statut":"ok","commentaire":""},{"id":"22168","nom":"Noémie MAILLARD","responsable":"MAILLARD Noémie","email":"maillard.noemie@gmail.com","tel":"(33) 665621231","telegram":"@Noemie","pays":"France","matiere":"Qur'aan et arabe","prof":"Bouthayna A","type":"Solo","duree":"1h","freq":"1","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+OmR3go3xpWdlMGU8","age":"","statut":"ok","commentaire":"11/11/2024 à 19h30"},{"id":"22325","nom":"Abdelaziz OUDHINI","responsable":"Oum Abdelaziz","email":"iqrawartaqiwaratil@gmail.com","tel":"","telegram":"@oumabdelaziz123","pays":"France","matiere":"Discussion","prof":"Ahsan D","type":"Groupe","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+l-JGdoRoTMwyNzI0","age":"","statut":"ok","commentaire":"14/11/2024 à 11h34"},{"id":"22325","nom":"Adam OUDHINI","responsable":"Oum Abdelaziz","email":"iqrawartaqiwaratil@gmail.com","tel":"","telegram":"@oumabdelaziz123","pays":"France","matiere":"Discussion","prof":"Ahsan D","type":"Groupe","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+l-JGdoRoTMwyNzI0","age":"","statut":"ok","commentaire":"14/11/2024 à 11h34"},{"id":"22256","nom":"Nourine CHK","responsable":"Chk Faiza","email":"arakech@hotmail.fr","tel":"33622887344","telegram":"@Um_AJNJ","pays":"France","matiere":"Qur'aan - Tashih Tilawa","prof":"Neama J","type":"Groupe","duree":"1h","freq":"5","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+tauAh3VIgBQ5ZjRk","age":"","statut":"ok","commentaire":"21/11/2024 à 10h24"},{"id":"22131","nom":"Souad LALAMI","responsable":"LALAMI Souad","email":"souadlalami99@gmail.com","tel":"33650177161","telegram":"https://t.me/Umm_marya","pays":"France","matiere":"Arabe - Ajroumiyyah","prof":"Fatima A","type":"Groupe","duree":"1h","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+EPUbNUnUZRI5Njk8","age":"","statut":"ok","commentaire":"28/11/2024 à 16h11"},{"id":"22205","nom":"karim HANSAL","responsable":"HANSAL Laila","email":"hansallaila83@gmail.com","tel":"(33) 635586590","telegram":"@Laila","pays":"France","matiere":"10h de quraan","prof":"Moaz H","type":"Solo","duree":"20min","freq":"3","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+0TV1EldMYrE4NWNk","age":"","statut":"ok","commentaire":"31/10/2025"},{"id":"22395","nom":"Abderahman KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"Aquidah","prof":"Ahsan D","type":"Solo","duree":"40min","freq":"2","tarif":"40,00 €","total":"40,00 €","lien":"","age":"","statut":"ok","commentaire":"29/07/2025"},{"id":"22320","nom":"Sabrina ABDELKAFI","responsable":"Abdelkafi","email":"nacsab@hotmail.fr","tel":"683665764","telegram":"@n2020055","pays":"France","matiere":"Tafsir","prof":"Anfel C","type":"Solo","duree":"30min","freq":"5","tarif":"75,00 €","total":"75,00 €","lien":"","age":"","statut":"ok","commentaire":"29/03/2024"},{"id":"22177","nom":"LOUNIS","responsable":"LOUNIS Malika","email":"malikette75@gmail.com","tel":"33651234814","telegram":"Malika L","pays":"France","matiere":"Qur'aan - Mémorisation","prof":"Mohamed L","type":"Solo","duree":"30min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+2uHMM_9zkIA4MDhk","age":"","statut":"ok","commentaire":"07/05/2024 09h22"},{"id":"22445","nom":"Donia RABAIS","responsable":"RABAI Donia","email":"Donia.rebai@outlook.fr","tel":"614205608","telegram":"Doni","pays":"France","matiere":"Aquidah","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"1","tarif":"10,00 €","total":"10,00 €","lien":"https://t.me/+QxvSlGmbO_NmMmI0","age":"","statut":"ok","commentaire":"06/04/2025"},{"id":"22205","nom":"Karim HANSAL","responsable":"HANSAL Laila","email":"hansallaila83@gmail.com","tel":"(33) 635586590","telegram":"@Laila","pays":"France","matiere":"Arabe","prof":"Anjem D","type":"Groupe","duree":"40min","freq":"1","tarif":"10,00 €","total":"10,00 €","lien":"https://t.me/+NnXUgfudlbk3OGU0","age":"","statut":"ok","commentaire":"04/05/2025"},{"id":"22810","nom":"Adam KAMIL","responsable":"kamil rajae","email":"","tel":"(00974) 6680 4998","telegram":"","pays":"Qatar","matiere":"Qur'aan et arabe","prof":"Bouthayna A","type":"DuoFratrie","duree":"30min","freq":"2","tarif":"17,50 €","total":"17,50 €","lien":"https://t.me/+Dq0miF1oIx0wMTE8","age":"","statut":"ok","commentaire":"04/05/2025"},{"id":"22810","nom":"aymen KAMIL","responsable":"kamil rajae","email":"","tel":"(00974) 6680 4998","telegram":"","pays":"Qatar","matiere":"Qur'aan et arabe","prof":"Bouthayna A","type":"DuoFratrie","duree":"40min","freq":"2","tarif":"23,50 €","total":"23,50 €","lien":"https://t.me/+Dq0miF1oIx0wMTE8","age":"","statut":"ok","commentaire":"04/05/2025"},{"id":"22402","nom":"yahya ARID","responsable":"arid Mohammed","email":"ummyahya18000@gmail.com","tel":"540572731","telegram":"","pays":"Algérie","matiere":"Qur'aan","prof":"Ouar Houcine H","type":"Solo","duree":"30min","freq":"4","tarif":"60,00 €","total":"60,00 €","lien":"https://t.me/+mf3eijlfO3c0NGFk","age":"","statut":"ok","commentaire":""},{"id":"22821","nom":"Adija KEPOUO","responsable":"Kepouo Adija","email":"","tel":"","telegram":"","pays":"","matiere":"Fiqh - Mariage","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+hde-kvSVelw3NDRk","age":"","statut":"ok","commentaire":""},{"id":"22237","nom":"Djemila DIEME","responsable":"DIEME Djemila","email":"Djemila45@gmail.com","tel":"33769970919","telegram":"@Djemii","pays":"France","matiere":"Arabe - ABY 1A","prof":"Oum Fatima","type":"Groupe","duree":"40min","freq":"3","tarif":"150,00 €","total":"158,00 €","lien":"https://t.me/+fXvVv0sBfdlhMjY0","age":"","statut":"ok","commentaire":"21/05/2025"},{"id":"22327","nom":"Nassima GALOUL","responsable":"Galoul Nassima","email":"galoul.nassima@gmail.com","tel":"33651200103","telegram":"","pays":"France","matiere":"Arabe - ABY 1A","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"2","tarif":"30,00 €","total":"30,00 €","lien":"https://t.me/+fXvVv0sBfdlhMjY0","age":"","statut":"ok","commentaire":"05/06/2025"},{"id":"22175","nom":"Aissata LY","responsable":"Ly Aïssata","email":"aissatalylheveder@outlook.fr","tel":"33618215166","telegram":"LyAïssata","pays":"France","matiere":"Arabe","prof":"Oum Fatima","type":"Solo","duree":"40min","freq":"1","tarif":"20,00 €","total":"20,00 €","lien":"https://t.me/+mjzba_LurfMyOTlk","age":"","statut":"ok","commentaire":"12/06/2025"},{"id":"22401","nom":"Valérie ALEMANY","responsable":"ALEMANY Valérie","email":"pous156@live.fr","tel":"33750520465","telegram":"","pays":"France","matiere":"Sira","prof":"Alaa K","type":"Groupe","duree":"40min","freq":"1","tarif":"30,00 €","total":"38,00 €","lien":"https://t.me/+c8eebk0dFUs4ZDlk","age":"","statut":"ok","commentaire":"12/06/2025"},{"id":"22846","nom":"shirley HABIB MOHAMED","responsable":"Hoarau Shirley","email":"","tel":"(+222) 27642948","telegram":"","pays":"Mauritanie","matiere":"10h arabe","prof":"Ahlam H","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+rqi692WF80o0NzM0","age":"","statut":"ok","commentaire":"22/06/2025"},{"id":"22850","nom":"Charifa GBETNKOM","responsable":"Charifa Gbetnkom","email":"","tel":"(+237) 659432672","telegram":"","pays":"Cameroun","matiere":"Fiqh - Mariage","prof":"Anjem D","type":"Groupe","duree":"1h","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+hde-kvSVelw3NDRk","age":"","statut":"ok","commentaire":"28/06/2025"},{"id":"22158","nom":"sadika ","responsable":"MOHAMED Sadika","email":"kawth91@hotmail.fr","tel":"","telegram":"@Mohadd","pays":"France","matiere":"10h arabe","prof":"Ahlam H","type":"Solo","duree":"30min","freq":"1","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+B3SdNWcml2wwODBk","age":"","statut":"ok","commentaire":"09/08/2025"},{"id":"22121","nom":"Moussa DRAME","responsable":"THIAM Kerol","email":"kerol.bousso@gmail.com","tel":"","telegram":"@Kerol","pays":"France","matiere":"Adab","prof":"Terence D","type":"Groupe","duree":"40min","freq":"1","tarif":"20,00 €","total":"20,00 €","lien":"https://t.me/+76ap5U9IEnc2MzU8","age":"","statut":"ok","commentaire":"09/08/2025"},{"id":"22121","nom":"moussa DRAME","responsable":"THIAM Kerol","email":"kerol.bousso@gmail.com","tel":"","telegram":"@Kerol","pays":"France","matiere":"Aquidah","prof":"Terence D","type":"Groupe","duree":"30min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+qqU8xlNE6bI1Nzhk","age":"","statut":"ok","commentaire":"11/10/2024 à 20h23"},{"id":"22172","nom":"Youssouf TOUMBOU","responsable":"MABREK Sarah","email":"sarahmabrek@outlook.fr","tel":"33769539593","telegram":"@oum youssouf","pays":"France","matiere":"Aquidah","prof":"Terence D","type":"Groupe","duree":"30min","freq":"2","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+qqU8xlNE6bI1Nzhk","age":"","statut":"ok","commentaire":""},{"id":"22172","nom":"Al Outheymin TOUMBOU","responsable":"MABREK Sarah","email":"sarahmabrek@outlook.fr","tel":"33769539593","telegram":"@oum youssouf","pays":"France","matiere":"Aquidah","prof":"Terence D","type":"Groupe","duree":"30min","freq":"2","tarif":"15,00 €","total":"15,00 €","lien":"https://t.me/+qqU8xlNE6bI1Nzhk","age":"","statut":"ok","commentaire":"02/08/2025"},{"id":"22203","nom":"nouriati HOUMADI","responsable":"HOUMADI Nouriati","email":"nouriati1995@hotmail.fr","tel":"(33) 0659 497423","telegram":"@nouriati","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"30min","freq":"1","tarif":"15,00 €","total":"15,00 €","lien":"en attente","age":"","statut":"ok","commentaire":"28/08/2025"},{"id":"22113","nom":"Ilyès WIAOUF","responsable":"WIAOUF Souad","email":"swiaouf@gmail.com","tel":"(33) 628724622","telegram":"@sousou","pays":"France","matiere":"Programme complet","prof":"Sofiane B","type":"Solo","duree":"40min","freq":"1","tarif":"20,00 €","total":"10,00 €","lien":"https://t.me/+0VysD2cJZR04NmE0","age":"","statut":"ok","commentaire":""},{"id":"22177","nom":"selma LOUNIS","responsable":"LOUNIS Malika","email":"malikette75@gmail.com","tel":"33651234814","telegram":"Malika L","pays":"France","matiere":"10h arabe","prof":"Linda B","type":"Solo","duree":"1h","freq":"1","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+Aj1iXDUDiykyMGM0","age":"","statut":"ok","commentaire":"02/09/2025"},{"id":"22177","nom":"sirine LOUNIS","responsable":"LOUNIS Malika","email":"malikette75@gmail.com","tel":"33651234814","telegram":"Malika L","pays":"France","matiere":"10h arabe","prof":"Linda B","type":"Solo","duree":"1h","freq":"1","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+4GKw7hYgBikxYTI8","age":"","statut":"ok","commentaire":"02/09/2025"},{"id":"22112","nom":"sarah GINIAUX","responsable":"GINIAUX Pamela","email":"p.giniaux@gmail.com","tel":"(33) 685612323","telegram":"@Pamela","pays":"France","matiere":"10h arabe","prof":"Ahlam H","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+k9tgiMQT6x1hZTA0","age":"","statut":"ok","commentaire":"02/09/2025"},{"id":"22112","nom":"inès GINIAUX","responsable":"GINIAUX Pamela","email":"p.giniaux@gmail.com","tel":"(33) 685612323","telegram":"@Pamela","pays":"France","matiere":"10h arabe","prof":"Ahlam H","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+Xl-IWRcnPaM0NmVk","age":"","statut":"ok","commentaire":"02/09/2025"},{"id":"22112","nom":"bilel GINIAUX","responsable":"GINIAUX Pamela","email":"p.giniaux@gmail.com","tel":"(33) 685612323","telegram":"@Pamela","pays":"France","matiere":"10h arabe","prof":"Ebrahem E","type":"Solo","duree":"1h","freq":"1","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+SwLXNGyUf8U4Nzlk","age":"","statut":"ok","commentaire":"02/09/2025"},{"id":"22112","nom":"maryam GINIAUX","responsable":"GINIAUX Pamela","email":"p.giniaux@gmail.com","tel":"(33) 685612323","telegram":"@Pamela","pays":"France","matiere":"10h arabe","prof":"Soumia H","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+xUM5HMHUqNc3MDhk","age":"","statut":"ok","commentaire":"02/09/2025"},{"id":"22107","nom":"Selman ZALTENI","responsable":"ZALTENI Kamelia","email":"kamelia.saadna92@gmail.com","tel":"(33) 627094670","telegram":"@eleve oum selmen kamelia famille","pays":"France","matiere":"10h arabe","prof":"Mahmoud A","type":"Solo","duree":"30min","freq":"3","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+-73e1jMV4SIyMWQ0","age":"","statut":"ok","commentaire":"04/09/2025"},{"id":"22295","nom":"ismail LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Aquidah","prof":"Mohamed C","type":"Solo","duree":"30min","freq":"1","tarif":"3,75 €","total":"3,75 €","lien":"https://t.me/+zLaei1jPum5mMmU0","age":"","statut":"ok","commentaire":""},{"id":"22100","nom":"Amel BENKHAYI","responsable":"BENKHAYI Amel","email":"benkhayighomariamel@gmail.com","tel":"(41) 078 773 2970","telegram":"@Oum Mohamed Iqra","pays":"Suisse","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22799","nom":"celia HASSAN","responsable":"Hassan Celi","email":"","tel":"(+20) ‪108 087 6059‬","telegram":"","pays":"Égypte","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22171","nom":"léonie MAGHROUDI","responsable":"MAGHROUDI\tLéonie","email":"leonie-24@hotmail.fr","tel":"212605747537","telegram":"Léonie","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22748","nom":"mayssara BERKANE","responsable":"Berkane","email":"lahnayada@gmail.com","tel":"+213540727721","telegram":"Ummay","pays":"algerie","matiere":"10h de quraan","prof":"Mariam H","type":"Solo","duree":"30min","freq":"4","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+WGa8nAjOPNI2OTA0","age":"","statut":"ok","commentaire":"06/06/2026"},{"id":"22583","nom":"clara JASMINE","responsable":"Jasmine clara","email":"clara.boque@gmail.com","tel":"33744584310","telegram":"42410015","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22393","nom":"shazia SADDIQUE","responsable":"saddique shazia","email":"tawhid_570@hotmail.fr","tel":"33 7 64 38 3 21","telegram":"A oum Abder-Rahman","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22291","nom":"jihen BELGASMI","responsable":"belgasmi jihen","email":"jihen.safiya@hotmail.com","tel":"21623826647","telegram":"@oummkhouzeymah","pays":"Tunisie","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22624","nom":"shazia GILSON MAITE","responsable":"Gilson Maïté","email":"maite.gilson@hotmail.fr","tel":"212600916153","telegram":"Oum Saouda","pays":"Maroc","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22624","nom":"shazia GILSON MAITE","responsable":"Gilson Maïté","email":"maite.gilson@hotmail.fr","tel":"212600916153","telegram":"Oum Saouda","pays":"Maroc","matiere":"tajdwid niv3","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22302","nom":"oceane AMDI","responsable":"AMDI Océane","email":"oceane.a@live.fr","tel":"33634372103","telegram":"Océane","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22583","nom":"clara JASMINE","responsable":"Jasmine clara","email":"clara.boque@gmail.com","tel":"33744584310","telegram":"42410015","pays":"France","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22171","nom":"léonie MAGHROUDI","responsable":"MAGHROUDI\tLéonie","email":"leonie-24@hotmail.fr","tel":"212605747537","telegram":"Léonie","pays":"France","matiere":"tajdwid niv3","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22100","nom":"Amel BENKHAYI","responsable":"BENKHAYI Amel","email":"benkhayighomariamel@gmail.com","tel":"(41) 078 773 2970","telegram":"@Oum Mohamed Iqra","pays":"Suisse","matiere":"tajdwid niv3","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22567","nom":"Jalila ANDRIEUX","responsable":"Andrieux Jalila","email":"jalila.andrieux@gmail.com","tel":"33612484940","telegram":"","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22567","nom":"Jalila ANDRIEUX","responsable":"Andrieux Jalila","email":"jalila.andrieux@gmail.com","tel":"33612484940","telegram":"","pays":"France","matiere":"tajdwid niv3","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22401","nom":"valérie ALEMANY","responsable":"ALEMANY Valérie","email":"pous156@live.fr","tel":"33750520465","telegram":"","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22748","nom":"douniazed CHAIBEDDRA","responsable":"Berkane","email":"lahnayada@gmail.com","tel":"+213540727721","telegram":"Ummay","pays":"algerie","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22748","nom":"douniazed CHAIBEDDRA","responsable":"Berkane","email":"lahnayada@gmail.com","tel":"+213540727721","telegram":"Ummay","pays":"algerie","matiere":"tajdwid niv3","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22912","nom":"Mariama BODJAM","responsable":"Bodjam Mariama","email":"","tel":"(+33) 0783711174","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Bouthayna A","type":"Solo","duree":"20min","freq":"1","tarif":"10,00 €","total":"10,00 €","lien":"https://t.me/+AKRgT_y0Ex4xNGZk","age":"","statut":"ok","commentaire":"09/04/2026"},{"id":"22223","nom":"hounayne GHALI","responsable":"Ghali Sandra","email":"sandra713@hotmail.fr","tel":"(33) 651028501","telegram":",","pays":"Égypte","matiere":"10h de quraan","prof":"Shimaa S","type":"Solo","duree":"30min","freq":"1","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+0136ddcpl_JkNjg0","age":"","statut":"ok","commentaire":"05/10/2025"},{"id":"22346","nom":"fridaws NEGUEZ","responsable":"Farkh Jamila","email":"Djam22@hotmail.fr","tel":"21627779574","telegram":"@Jamila_OumLoqman","pays":"Tunisie","matiere":"Arabe","prof":"Anfel C","type":"Groupe","duree":"40min","freq":"3","tarif":"150,00 €","total":"158,00 €","lien":"https://t.me/+cB0PafNvFCAzYzI0","age":"","statut":"ok","commentaire":"05/10/2025"},{"id":"22346","nom":"loqman NEGUEZ","responsable":"Farkh Jamila","email":"Djam22@hotmail.fr","tel":"21627779574","telegram":"@Jamila_OumLoqman","pays":"Tunisie","matiere":"Arabe","prof":"Izhak A","type":"Groupe","duree":"40min","freq":"3","tarif":"150,00 €","total":"158,00 €","lien":"https://t.me/+PHRK1kQfjw00YTdk","age":"","statut":"ok","commentaire":"05/10/2025"},{"id":"22882","nom":"anas sid benallou","responsable":"sid Benallou","email":"","tel":"","telegram":"","pays":"France","matiere":"Arabe - ABY 1B","prof":"Izhak A","type":"DuoFratrie","duree":"40min","freq":"3","tarif":"150,00 €","total":"158,00 €","lien":"https://t.me/+PHRK1kQfjw00YTdk","age":"","statut":"ok","commentaire":""},{"id":"22882","nom":"younes sid benallou","responsable":"sid Benallou","email":"","tel":"","telegram":"","pays":"France","matiere":"Arabe - ABY 1B","prof":"Izhak A","type":"DuoFratrie","duree":"40min","freq":"3","tarif":"150,00 €","total":"158,00 €","lien":"https://t.me/+PHRK1kQfjw00YTdk","age":"","statut":"ok","commentaire":""},{"id":"22748","nom":"hind BERKANE","responsable":"Berkane","email":"lahnayada@gmail.com","tel":"+213540727721","telegram":"Ummay","pays":"algerie","matiere":"Arabe","prof":"Meryem G","type":"Groupe","duree":"40min","freq":"3","tarif":"150,00 €","total":"150,00 €","lien":"https://t.me/+LHTDMmsws0MyNmZk","age":"","statut":"ok","commentaire":"10/09/2024 à 21h41"},{"id":"22624","nom":"shazia GILSON MAITE","responsable":"Gilson Maïté","email":"maite.gilson@hotmail.fr","tel":"212600916153","telegram":"Oum Saouda","pays":"Maroc","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"8,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"10/10/2025"},{"id":"22914","nom":"aicha BEAUFILS","responsable":"Beaufils Aicha","email":"","tel":"(33) 616919594","telegram":"","pays":"France","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"10/10/2025"},{"id":"22673","nom":"kenza HAKEEM","responsable":"Hakem Kenza","email":"kenzahkm@icloud.com","tel":"(33) 661821300","telegram":"ان ها رون","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22673","nom":"kenza HAKEEM","responsable":"Hakem Kenza","email":"kenzahkm@icloud.com","tel":"(33) 661821300","telegram":"ان ها رون","pays":"France","matiere":"Arabe - ABY 1A","prof":"Oum Fatima","type":"Groupe","duree":"1h","freq":"2","tarif":"100,00 €","total":"100,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"25/09/2025"},{"id":"22346","nom":"aisha NEGUEZ","responsable":"Farkh Jamila","email":"Djam22@hotmail.fr","tel":"21627779574","telegram":"@Jamila_OumLoqman","pays":"Tunisie","matiere":"Arabe - ABY 1A","prof":"Sabrina T","type":"Duo","duree":"30min","freq":"3","tarif":"38,00 €","total":"46,00 €","lien":"https://t.me/+dNSse0bUuMNlNDU0","age":"","statut":"ok","commentaire":"15/10/2025"},{"id":"22100","nom":"Zeineb BENKHAYI","responsable":"BENKHAYI Amel","email":"benkhayighomariamel@gmail.com","tel":"(41) 078 773 2970","telegram":"@Oum Mohamed Iqra","pays":"Suisse","matiere":"Aquidah","prof":"Alaa K","type":"Solo","duree":"40min","freq":"2","tarif":"40,00 €","total":"40,00 €","lien":"https://t.me/+nviswSIi1sthYjQ8","age":"","statut":"ok","commentaire":"15/10/2025"},{"id":"22150","nom":"naelle BENDAHMANE","responsable":"BEN DAHMANE Rabiha","email":"aby78@hotmail.fr","tel":"(33) 651519796","telegram":"@rabiha","pays":"France","matiere":"Arabe - ABY 1A","prof":"Sabrina T","type":"Duo","duree":"30min","freq":"3","tarif":"38,00 €","total":"38,00 €","lien":"https://t.me/+dNSse0bUuMNlNDU0","age":"","statut":"ok","commentaire":"15/10/2025"},{"id":"22295","nom":"Ismail LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"Français","prof":"Marwan Z","type":"Solo","duree":"30min","freq":"1","tarif":"3,75 €","total":"3,75 €","lien":"https://t.me/+Lzl-uJ5c1VdjMjA0","age":"","statut":"ok","commentaire":""},{"id":"22295","nom":"Adem LAVIEILLE","responsable":"BADACHE Sara","email":"Badache.sara@gmail.com","tel":"(974) 33043850","telegram":"@Sara","pays":"Qatar","matiere":"math","prof":"Marwan Z","type":"Solo","duree":"30min","freq":"1","tarif":"3,75 €","total":"3,75 €","lien":"https://t.me/+84YPyE7SPl9kNjY0","age":"","statut":"ok","commentaire":""},{"id":"22914","nom":"aicha BEAUFILS","responsable":"Beaufils Aicha","email":"","tel":"(33) 616919594","telegram":"","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"10/10/2025"},{"id":"22914","nom":"aicha BEAUFILS","responsable":"Beaufils Aicha","email":"","tel":"(33) 616919594","telegram":"","pays":"France","matiere":"Qur'aan","prof":"Oum Fatima","type":"Solo","duree":"20min","freq":"2","tarif":"20,00 €","total":"20,00 €","lien":"https://t.me/+oGInCtl6QNo3M2Vk","age":"","statut":"ok","commentaire":"1/12/2025"},{"id":"22262","nom":"hetan CAMARA","responsable":"CAMARA Sembala","email":"sembalaCAMARA54@gmail.com","tel":"(33) 761435693","telegram":"@Sembala CAMARA Oum Hetan","pays":"France","matiere":"Qur'aan","prof":"Soukaina S","type":"Solo","duree":"30min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+lPOa8pCnrAxkNzE8","age":"","statut":"ok","commentaire":"08/12/2025"},{"id":"22114","nom":"Kelly VIRGINIE","responsable":"KELLY Virginie","email":"Oumniafoulan@gmail.com","tel":"447763333546","telegram":"@UmmAmina","pays":"Royaume Unis","matiere":"Tajwid","prof":"Kenza Z","type":"Solo","duree":"1h","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+sHC5wlIiP9Y5YTlk","age":"","statut":"ok","commentaire":"31/12/2025"},{"id":"22122","nom":"saffiyah THIAM","responsable":"THIAM Aissatou","email":"dawoud.thiam@protonmail.com","tel":"(33) 634319659","telegram":"@Oum Dawoud Safiyah","pays":"France","matiere":"Qur'aan","prof":"Hounayne A","type":"Solo","duree":"20min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+bIt3LLTRu_RlNTBk","age":"","statut":"ok","commentaire":"02/01/2026"},{"id":"22151","nom":"fatna NOUAR","responsable":"NOUAR Fatna","email":"nouar.fatna@yahoo.fr","tel":"07-67-90-17-56","telegram":"Oum Assia","pays":"France","matiere":"tajdwid niv1","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"09/01/2026"},{"id":"22151","nom":"fatna NOUAR","responsable":"NOUAR Fatna","email":"nouar.fatna@yahoo.fr","tel":"07-67-90-17-56","telegram":"Oum Assia","pays":"France","matiere":"tajdwid niv2","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"09/01/2026"},{"id":"22151","nom":"fatna NOUAR","responsable":"NOUAR Fatna","email":"nouar.fatna@yahoo.fr","tel":"07-67-90-17-56","telegram":"Oum Assia","pays":"France","matiere":"tajdwid niv3","prof":"Oum Fatima","type":"Groupe","duree":"30min","freq":"1","tarif":"0,00 €","total":"0,00 €","lien":"https://t.me/+mnVwoR7Vy9EyMjZk","age":"","statut":"ok","commentaire":"09/01/2026"},{"id":"22172","nom":"Youssouf TOUMBOU","responsable":"MABREK Sarah","email":"sarahmabrek@outlook.fr","tel":"33769539593","telegram":"@oum youssouf","pays":"France","matiere":"Qur'aan","prof":"Hounayne A","type":"Groupe","duree":"40min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+qqU8xlNE6bI1Nzhk","age":"","statut":"ok","commentaire":"11/01/2026"},{"id":"22406","nom":"Mohammed MERIMI","responsable":"MERIMI Mohammed","email":"mmerimi64@gmail.com","tel":"667334696","telegram":"Mohammed Merimi","pays":"France","matiere":"10h de quraan","prof":"Mohamed B","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+A9UX6faxntM4ZDY0","age":"","statut":"ok","commentaire":"14/01/2026"},{"id":"22256","nom":"faiza CHK","responsable":"Chk Faiza","email":"arakech@hotmail.fr","tel":"33622887344","telegram":"@Um_AJNJ","pays":"France","matiere":"Hadith - Jawami3ul Akhbaar","prof":"Anjem D","type":"Groupe","duree":"40min","freq":"1","tarif":"","total":"0,00 €","lien":"https://t.me/+wCFzY1PRpE5iMzg0","age":"","statut":"ok","commentaire":"09/02/2026"},{"id":"22395","nom":"abderaman KOUIDRI","responsable":"Nabila Kouidri","email":"","tel":"","telegram":"Nabila Koudri","pays":"France","matiere":"5h de qu'raan","prof":"Moaz H","type":"Solo","duree":"30min","freq":"2","tarif":"30,00 €","total":"38,00 €","lien":"https://t.me/+qO0xveAVWyNlOGRk","age":"","statut":"ok","commentaire":"11/02/2026"},{"id":"22165","nom":"Tessnim BELKORCHIA","responsable":"MATOUF Anissa","email":"nissa-42@hotmail.fr","tel":"(33) 649220538","telegram":"@oumfar","pays":"France","matiere":"Qur'aan","prof":"Rekia C","type":"Solo","duree":"30min","freq":"2","tarif":"","total":"0,00 €","lien":"https://t.me/+TxO_S5p9moNmMjI0","age":"","statut":"ok","commentaire":"17/02/2026"},{"id":"22165","nom":"souleyman BELKORCHIA","responsable":"MATOUF Anissa","email":"nissa-42@hotmail.fr","tel":"(33) 649220538","telegram":"@oumfar","pays":"France","matiere":"Qur'aan","prof":"Mohamed B","type":"DuoFratrie","duree":"1h","freq":"1","tarif":"17,50 €","total":"17,50 €","lien":"https://t.me/+TxO_S5p9moNmMjI0","age":"","statut":"ok","commentaire":"17/02/2026"},{"id":"22165","nom":"selman BELKORCHIA","responsable":"MATOUF Anissa","email":"nissa-42@hotmail.fr","tel":"(33) 649220538","telegram":"@oumfar","pays":"France","matiere":"Qur'aan","prof":"Mohamed B","type":"DuoFratrie","duree":"1h","freq":"1","tarif":"17,50 €","total":"17,50 €","lien":"https://t.me/+TxO_S5p9moNmMjI0","age":"","statut":"ok","commentaire":"17/02/2026"},{"id":"22402","nom":"issa ARID","responsable":"arid Mohammed","email":"ummyahya18000@gmail.com","tel":"540572731","telegram":"","pays":"Algérie","matiere":"10h de quraan","prof":"Ouar Houcine H","type":"Solo","duree":"20min","freq":"5","tarif":"50,00 €","total":"58,00 €","lien":"https://t.me/+kOOrGadNc6ZiMjY0","age":"","statut":"ok","commentaire":"29/03/2026"},{"id":"22172","nom":"Youssouf TOUMBOU","responsable":"MABREK Sarah","email":"sarahmabrek@outlook.fr","tel":"33769539593","telegram":"@oum youssouf","pays":"France","matiere":"10h de quraan","prof":"Mohamed s","type":"Solo","duree":"30min","freq":"2","tarif":"50,00 €","total":"50,00 €","lien":"https://t.me/+89clXbZyy10xZDA0","age":"","statut":"ok","commentaire":"14/04/2026"}];
-const PROFS_DB  = ["Abdelmalek","Abou Raslan","Ahlam H","Ahlam Hasan","Ahsan D","Alaa K","Anfel C","Anjem D","Aya Hamdi Bakr H","Aya Hbh H","Bastien T","Bouthayna A","Ebrahem E","Fatima A","Fatmazohra K","Fayrouz H","Feinda K","Hanane R","Hawa C","Hounayne A","Izhak A","Kenza Z","Kouate Feinda","Linda B","Mahmoud A","Mariam H","Marwan Z","Meriem P","Meryem G","Moaz H","Mohamed B","Mohamed C","Mohamed Harkat","Mohamed K","Mohamed L","Mohamed O","Mohamed s","Nadia C","Neama J","Noura M","Omaima E","Ouar Houcine H","Oum Fatima","Raihana B","Rekia C","Sabrina T","Safora M","Salah b","Shimaa S","Sofiane B","Souhila B","Soukaina S","Soumia H","Terence D","Yacine Z","Zahia A","youssef h"];
-
-// ══════════════════════════════════════════════
-// GRILLE TARIFAIRE RÉELLE 2025 — IQRAWARTAQI
-// Structure : TARIFS[frequence][type][duree] = prix€/mois
+// TARIFS
 // ══════════════════════════════════════════════
 const TARIFS = {
-  1: { Solo:{20:10,30:15,40:20,"1h":30}, Duo:{20:9,30:13,40:17,"1h":25}, DuoFratrie:{20:12,30:18,40:24,"1h":35}, Groupe:{20:5,30:8,40:10,"1h":15} },
-  2: { Solo:{20:20,30:30,40:40,"1h":60}, Duo:{20:17,30:25,40:33,"1h":50}, DuoFratrie:{20:24,30:35,40:47,"1h":70}, Groupe:{20:10,30:15,40:20,"1h":30} },
-  3: { Solo:{20:30,30:45,40:60,"1h":90}, Duo:{20:25,30:38,40:50,"1h":75}, DuoFratrie:{20:35,30:53,40:70,"1h":105}, Groupe:{20:15,30:23,40:30,"1h":45} },
-  4: { Solo:{20:40,30:60,40:80,"1h":120}, Duo:{20:34,30:50,40:66,"1h":100}, DuoFratrie:{20:47,30:70,40:94,"1h":140}, Groupe:{20:20,30:30,40:40,"1h":60} },
-  5: { Solo:{20:50,30:75,40:100,"1h":150}, Duo:{20:42,30:63,40:83,"1h":125}, DuoFratrie:{20:59,30:88,40:117,"1h":175}, Groupe:{20:25,30:38,40:50,"1h":75} },
-  6: { Solo:{20:60,30:90,40:120,"1h":180}, Duo:{20:50,30:75,40:99,"1h":150}, DuoFratrie:{20:70,30:105,40:145,"1h":210}, Groupe:{20:30,30:45,40:60,"1h":90} },
-  7: { Solo:{20:70,30:105,40:140,"1h":210}, Duo:{20:59,30:88,40:116,"1h":175}, DuoFratrie:{20:82,30:123,40:164,"1h":245}, Groupe:{20:35,30:53,40:70,"1h":105} }
+  1:{Solo:{20:10,30:15,40:20,60:30},Duo:{20:9,30:13,40:17,60:25},DuoFratrie:{20:12,30:18,40:24,60:35},Groupe:{20:5,30:8,40:10,60:15}},
+  2:{Solo:{20:20,30:30,40:40,60:60},Duo:{20:17,30:25,40:33,60:50},DuoFratrie:{20:24,30:35,40:47,60:70},Groupe:{20:10,30:15,40:20,60:30}},
+  3:{Solo:{20:30,30:45,40:60,60:90},Duo:{20:25,30:38,40:50,60:75},DuoFratrie:{20:35,30:53,40:70,60:105},Groupe:{20:15,30:23,40:30,60:45}},
+  4:{Solo:{20:40,30:60,40:80,60:120},Duo:{20:34,30:50,40:66,60:100},DuoFratrie:{20:47,30:70,40:94,60:140},Groupe:{20:20,30:30,40:40,60:60}},
+  5:{Solo:{20:50,30:75,40:100,60:150},Duo:{20:42,30:63,40:83,60:125},DuoFratrie:{20:59,30:88,40:117,60:175},Groupe:{20:25,30:38,40:50,60:75}},
+  6:{Solo:{20:60,30:90,40:120,60:180},Duo:{20:50,30:75,40:99,60:150},DuoFratrie:{20:70,30:105,40:145,60:210},Groupe:{20:30,30:45,40:60,60:90}},
+  7:{Solo:{20:70,30:105,40:140,60:210},Duo:{20:59,30:88,40:116,60:175},DuoFratrie:{20:82,30:123,40:164,60:245},Groupe:{20:35,30:53,40:70,60:105}}
 };
 
-// Frais de session obligatoires
-const FRAIS_SESSION = 8;
-
-// Options disponibles
-const OPTIONS = {
-  quiz:    { label: 'Quizz / évaluations Google Form', prix: 10 },
-  record:  { label: 'Enregistrement des cours', prix: 10 },
-  fiches:  { label: 'Fiches fawaid aide-mémoire', prix: 10 },
-};
-
-function calcTarif(freq, type, duree) {
-  freq = parseInt(freq);
-  const durMap = { '20min':20, '30min':30, '40min':40, '1h':60, '60min':60 };
-  const durKey = durMap[duree] || parseInt(duree) || 40;
-  // Chercher la clé la plus proche
-  const typeMap = { 'Solo':'Solo','Duo':'Duo','DuoFratrie':'DuoFratrie','Groupe':'Groupe','Parrainage':'Solo' };
-  const t = typeMap[type] || 'Solo';
-  try { return TARIFS[freq][t][durKey] || null; }
-  catch(e){ return null; }
+function calcTarif(freq,type,duree){
+  const dMap={ "20min":20,"30min":30,"40min":40,"1h":60,"60min":60 };
+  const d=dMap[duree]||parseInt(duree);
+  const f=parseInt(freq);
+  return TARIFS?.[f]?.[type]?.[d] || null;
 }
 
 // ══════════════════════════════════════════════
-// STATE
+// STATE DB (IMPORTANT)
 // ══════════════════════════════════════════════
-let curRole = 'eleve';
-let curUser = null;
-let curPage = '';
-let importBuffer = [];
-let seances = [];
-let factures = [];
-let utilisateurs = [];
-
-// Chargement depuis localStorage avec fallback silencieux
-try { seances = JSON.parse(localStorage.getItem('iqra_seances') || '[]'); } catch(e) {}
-try { factures = JSON.parse(localStorage.getItem('iqra_factures') || '[]'); } catch(e) {}
-try { utilisateurs = JSON.parse(localStorage.getItem('iqra_users') || '[]'); } catch(e) {}
-
-function saveLocal() {
-  try {
-    localStorage.setItem('iqra_seances', JSON.stringify(seances));
-    localStorage.setItem('iqra_factures', JSON.stringify(factures));
-    localStorage.setItem('iqra_users', JSON.stringify(utilisateurs));
-  } catch(e) { console.warn('localStorage indisponible, données en mémoire uniquement'); }
-}
+let ELEVES_DB = window.ELEVES_DB || [];
+let PROFS_DB = window.PROFS_DB || [];
 
 // ══════════════════════════════════════════════
-// AUTH
+// AUTH (simple safe mode)
 // ══════════════════════════════════════════════
-function setRole(r) {
-  curRole = r;
-  document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('rt-'+r).classList.add('active');
-}
+function initApp(){
+  document.getElementById("auth").style.display="none";
+  document.getElementById("app").style.display="flex";
 
-function showReset() { document.getElementById('panel-login').style.display='none'; document.getElementById('panel-reset').style.display='block'; }
-function showLogin() { document.getElementById('panel-reset').style.display='none'; document.getElementById('panel-login').style.display='block'; }
-
-async function doLogin() {
-  const email = document.getElementById('l-email').value.trim();
-  const pw = document.getElementById('l-pw').value;
-  const btn = document.getElementById('l-btn');
-  const err = document.getElementById('l-err');
-  err.style.display='none';
-  if (!email || !pw) { showErr(err,'Veuillez remplir tous les champs'); return; }
-  btn.disabled=true; btn.textContent='Connexion...';
-  if (FB_CONFIGURED) {
-    try {
-      const cred = await firebase.auth().signInWithEmailAndPassword(email, pw);
-      curUser = { email: cred.user.email, uid: cred.user.uid };
-      initApp();
-    } catch(e) {
-      btn.disabled=false; btn.textContent='Se connecter';
-      const msgs = {
-        'auth/user-not-found':'Email non reconnu',
-        'auth/wrong-password':'Mot de passe incorrect',
-        'auth/invalid-credential':'Email ou mot de passe incorrect',
-        'auth/too-many-requests':'Trop de tentatives, réessayez dans quelques minutes'
-      };
-      showErr(err, msgs[e.code] || 'Erreur de connexion : '+e.message);
-    }
-  } else {
-    // MODE DÉMO — Firebase non configuré, accès direct
-    setTimeout(()=>{
-      curUser = { email: email, uid: 'demo-'+Date.now() };
-      initApp();
-      btn.disabled=false;
-      btn.textContent='Se connecter';
-    }, 400);
-  }
-}
-
-async function doReset() {
-  const email = document.getElementById('r-email').value.trim();
-  const btn = document.getElementById('r-btn');
-  const err = document.getElementById('r-err');
-  const ok = document.getElementById('r-ok');
-  err.style.display='none'; ok.style.display='none';
-  if (!email) { showErr(err,'Entrez votre email'); return; }
-  btn.disabled=true; btn.textContent='Envoi...';
-  if (FB_CONFIGURED) {
-    try {
-      await firebase.auth().sendPasswordResetEmail(email);
-      ok.textContent='✅ Email envoyé ! Vérifiez votre boîte mail (et les spams).';
-      ok.style.display='block';
-    } catch(e) {
-      showErr(err, e.code==='auth/user-not-found'?'Email non reconnu':'Erreur : '+e.message);
-    }
-  } else {
-    ok.textContent='✅ Lien de réinitialisation envoyé à '+email+' (activez Firebase pour les vrais emails).';
-    ok.style.display='block';
-  }
-  btn.disabled=false; btn.textContent='Envoyer le lien';
-}
-
-async function doLogout() {
-  if (FB_CONFIGURED) await firebase.auth().signOut();
-  curUser=null;
-  document.getElementById('app').style.display='none';
-  document.getElementById('auth').style.display='flex';
-}
-
-function showErr(el,msg){ el.textContent=msg; el.style.display='block'; }
-
-function initApp() {
-  document.getElementById('auth').style.display='none';
-  document.getElementById('app').style.display='flex';
-  if (!FB_CONFIGURED) {
-    document.getElementById('demo-banner').style.display='block';
-  }
   setupSidebar();
-  populateRapportSelect();
-  populateProfSelect();
-  setupTarifCalc();
+  showPage("db");
+}
+
+function setRole(r){
+  curRole=r;
 }
 
 // ══════════════════════════════════════════════
 // SIDEBAR
 // ══════════════════════════════════════════════
-const NAVS = {
-  eleve:[{s:'Mon espace',items:[
-    {id:'db',ic:'🏠',lb:'Tableau de bord'},{id:'planning',ic:'📅',lb:'Mon planning'},
-    {id:'zoom',ic:'🎥',lb:'Liens Zoom/Meet'},{id:'histo',ic:'📖',lb:'Historique séances'},
-    {id:'rapports',ic:'📝',lb:'Mes rapports'},{id:'presences',ic:'✅',lb:'Présences'},
-    {id:'tarifs',ic:'💶',lb:'Grille tarifaire'},
+const NAVS={
+  eleve:[{s:"Espace",items:[
+    {id:"db",ic:"🏠",lb:"Dashboard"},
+    {id:"planning",ic:"📅",lb:"Planning"},
+    {id:"histo",ic:"📖",lb:"Historique"},
+    {id:"tarifs",ic:"💶",lb:"Tarifs"},
+    {id:"rapports",ic:"📝",lb:"Rapports"},
   ]}],
-  parent:[{s:'Espace parent',items:[
-    {id:'db',ic:'🏠',lb:'Tableau de bord'},{id:'presences',ic:'✅',lb:'Présences enfant'},
-    {id:'rapports',ic:'📝',lb:'Rapports de cours'},{id:'paiements',ic:'💳',lb:'Factures'},
-    {id:'tarifs',ic:'💶',lb:'Grille tarifaire'},
-    {id:'msgs',ic:'💬',lb:"Contacter l'admin"},
-  ]}],
-  enseignant:[{s:'Mon espace',items:[
-    {id:'db',ic:'🏠',lb:'Tableau de bord'},{id:'mes-eleves',ic:'👥',lb:'Mes élèves'},
-    {id:'planning',ic:'📅',lb:'Mon planning'},{id:'rapport-cours',ic:'📝',lb:'Rapport de cours'},
-    {id:'progression',ic:'📈',lb:'Progression'},{id:'absences',ic:'❌',lb:'Absences'},
-  ]}],
-  admin:[{s:'Administration',items:[
-    {id:'db',ic:'🏠',lb:'Tableau de bord'},{id:'gest-eleves',ic:'👥',lb:'Gestion élèves'},
-    {id:'gest-profs',ic:'🎓',lb:'Enseignants'},{id:'planning',ic:'📅',lb:'Planning général'},
-    
-    {id:'stats',ic:'📊',lb:'Statistiques'},{id:'tarifs',ic:'💶',lb:'Grille tarifaire'},
-    {id:'msgs',ic:'💬',lb:'Messages'},
-  ]}],
+  admin:[{s:"Admin",items:[
+    {id:"db",ic:"🏠",lb:"Dashboard"},
+    {id:"gest-eleves",ic:"👥",lb:"Élèves"},
+    {id:"stats",ic:"📊",lb:"Stats"},
+    {id:"tarifs",ic:"💶",lb:"Tarifs"},
+  ]}]
 };
 
-const PAGE_TITLES = {
-  db:['Tableau de bord','Vue d'ensemble'],planning:['Planning des cours','Semaine en cours'],
-  zoom:['Liens Zoom / Meet','Accéder à vos cours'],histo:['Historique des séances','Toutes vos séances'],
-  rapports:['Rapports de cours','Comptes-rendus'],presences:['Présences & absences','Suivi assiduité'],
-  paiements:['Paiements & factures','Gestion financière'],tarifs:['Grille tarifaire 2025','Iqrawartaqi — confidentiel'],
-  renouvellement:['Renouveler mon forfait','Prolonger votre inscription'],msgs:['Messages','Messagerie interne'],
-  'mes-eleves':['Mes élèves','Suivi et rapports'],'rapport-cours':['Rapport de cours','Enregistrer une séance'],
-  progression:['Progression élèves','Avancement'],absences:['Gestion absences','Déclarations'],
-  'gest-eleves':['Gestion des élèves','Base de données — 243 élèves actifs'],
-  'gest-profs':['Enseignants','Équipe pédagogique'],renouvellements:['Renouvellements','Forfaits à renouveler'],
-  compta:['Comptabilité','Recettes et factures'],stats:['Statistiques','Indicateurs clés'],
-};
-
-function setupSidebar() {
-  const nav = NAVS[curRole] || NAVS.admin;
-  const rNames = {eleve:'Élève',parent:'Parent',enseignant:'Enseignant(e)',admin:'Administrateur'};
-  const email = curUser?.email || '';
-  const initials = email.slice(0,2).toUpperCase();
-  document.getElementById('ua').textContent = initials;
-  document.getElementById('un').textContent = email;
-  document.getElementById('ur').textContent = rNames[curRole];
-  const sb = document.getElementById('sb-nav');
-  sb.innerHTML = nav.map(sec=>`<div class="sb-sec"><div class="sb-sec-title">${sec.s}</div>${sec.items.map(i=>`<button class="nav-item" id="ni-${i.id}" onclick="showPage('${i.id}')"><span class="ic">${i.ic}</span>${i.lb}</button>`).join('')}</div>`).join('');
-  showPage(nav[0].items[0].id);
-}
-
-function showPage(id) {
-  curPage = id;
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  const nb = document.getElementById('ni-'+id);
-  if(nb) nb.classList.add('active');
-  const ti = PAGE_TITLES[id] || [id,''];
-  document.getElementById('pg-title').textContent = ti[0];
-  document.getElementById('pg-sub').textContent = ti[1];
-  const pages = {
-    db:pgDashboard, planning:pgPlanning, zoom:pgZoom, histo:pgHisto,
-    rapports:pgRapports, presences:pgPresences, paiements:pgPaiements,
-    tarifs:pgTarifs, renouvellement:pgRenouvellement, msgs:pgMsgs,
-    'mes-eleves':pgMesEleves, 'rapport-cours':pgRapportCours,
-    progression:pgProgression, absences:pgAbsences,
-    'gest-eleves':pgGestEleves, 'gest-profs':pgGestProfs,
-    renouvellements:pgRenouvellements, compta:pgCompta, stats:pgStats,
-  };
-  document.getElementById('pgc').innerHTML = (pages[id]||pgComingSoon)();
-}
-
-// ══════════════════════════════════════════════
-// HELPERS UI
-// ══════════════════════════════════════════════
-function av(nom,cls='av-g'){const p=nom?nom.trim().split(' '):['-'];const i=(p[0]?.[0]||'')+(p[1]?.[0]||p[0]?.[1]||'');return`<div class="av ${cls}">${i.toUpperCase()}</div>`;}
-function badge(txt,cls){return`<span class="badge ${cls}">${txt}</span>`;}
-function pb(val,cls=''){return`<div style="display:flex;align-items:center;gap:6px"><div class="pb-w" style="width:70px"><div class="pb ${cls}" style="width:${val}%"></div></div><span style="font-size:12px">${val}%</span></div>`;}
-
-function openModal(id){document.getElementById(id).classList.add('open');}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
-function toast(msg,type=''){const t=document.getElementById('toast-el');t.textContent=(type==='err'?'❌ ':'✅ ')+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
-function selNiv(btn,grp){const p=btn.closest('.niv-wrap');p.querySelectorAll('.niv-btn').forEach(b=>b.classList.remove('sel'));btn.classList.add('sel');}
-
-function populateRapportSelect(){
-  const sel=document.getElementById('rp-eleve');
-  if(!sel) return;
-  sel.innerHTML=ELEVES_DB.map(e=>`<option value="${e.id}">${e.nom}</option>`).join('');
-}
-function populateProfSelect(){
-  const sel=document.getElementById('ne-prof');
-  if(!sel) return;
-  sel.innerHTML=PROFS_DB.map(p=>`<option>${p}</option>`).join('');
-}
-function setupTarifCalc(){
-  ['ne-type','ne-dur','ne-freq'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change',updateTarifCalc);
-  });
-}
-function updateTarifCalc(){
-  const type=document.getElementById('ne-type')?.value;
-  const dur=document.getElementById('ne-dur')?.value;
-  const freq=document.getElementById('ne-freq')?.value;
-  if(!type||!dur||!freq) return;
-  const p=calcTarif(freq,type,dur);
-  const el=document.getElementById('tarif-result');
-  if(el) el.textContent = p ? p+'€/mois' : '— (consulter admin)';
-}
-
-// ══════════════════════════════════════════════
-// PAGES — TABLEAUX DE BORD
-// ══════════════════════════════════════════════
-function pgDashboard() {
-  const total = ELEVES_DB.length;
-  const avecEmail = ELEVES_DB.filter(e=>e.email&&e.email.includes('@')).length;
-  const profs = new Set(ELEVES_DB.map(e=>e.prof).filter(Boolean)).size;
-
-  if(curRole==='admin') return `
-  <div class="sg">
-    <div class="sc gold"><div class="si">👥</div><div class="sl">Élèves actifs</div><div class="sv">${total}</div><div class="ss">Import BDD réel</div></div>
-    <div class="sc navy"><div class="si">🎓</div><div class="sl">Enseignants</div><div class="sv">${profs}</div><div class="ss">En activité</div></div>
-    <div class="sc ok2"><div class="si">📧</div><div class="sl">Avec email</div><div class="sv">${avecEmail}</div><div class="ss">Accès portail</div></div>
-    <div class="sc warn2"><div class="si">🔄</div><div class="sl">Sans email</div><div class="sv">${total-avecEmail}</div><div class="ss">À compléter</div></div>
-  </div>
-  ${pgGestElevesTable(ELEVES_DB.slice(0,10), true)}`;
-
-  if(curRole==='enseignant') {
-    const mesE = ELEVES_DB.filter(e=>e.email===curUser?.email?.replace('prof.',''));
-    return `<div class="sg">
-      <div class="sc gold"><div class="si">👥</div><div class="sl">Mes élèves</div><div class="sv">${ELEVES_DB.length}</div><div class="ss">Base complète</div></div>
-      <div class="sc navy"><div class="si">📅</div><div class="sl">Séances saisies</div><div class="sv">${seances.length}</div><div class="ss">Ce mois</div></div>
+function setupSidebar(){
+  const nav= NAVS[curRole]||NAVS.eleve;
+  const sb=document.getElementById("sb-nav");
+  sb.innerHTML=nav.map(s=>`
+    <div class="sb-sec">
+      <div class="sb-sec-title">${s.s}</div>
+      ${s.items.map(i=>`
+        <button class="nav-item" id="ni-${i.id}" onclick="showPage('${i.id}')">
+          ${i.ic} ${i.lb}
+        </button>
+      `).join("")}
     </div>
-    <div class="card"><div class="ch"><h3>Actions rapides</h3></div><div class="cb">
-      <button class="btn btn-gold" onclick="openModal('mo-rapport');setInterval(()=>document.getElementById('rp-date').value=new Date().toISOString().slice(0,10),100)">📝 Rédiger un rapport</button>
-    </div></div>`;
-  }
-
-  // élève / parent
-  const myEl = ELEVES_DB.find(e=>e.email===curUser?.email) || ELEVES_DB[0];
-  return `<div class="sg">
-    <div class="sc gold"><div class="si">📚</div><div class="sl">Matière</div><div class="sv" style="font-size:16px">${myEl?.matiere||'—'}</div><div class="ss">${myEl?.prof||'—'}</div></div>
-    <div class="sc navy"><div class="si">📅</div><div class="sl">Fréquence</div><div class="sv">${myEl?.freq||'—'}<span style="font-size:14px">×/sem</span></div><div class="ss">${myEl?.duree||'—'} · ${myEl?.type||'—'}</div></div>
-    <div class="sc ok2"><div class="si">💳</div><div class="sl">Tarif mensuel</div><div class="sv">${myEl?.total||myEl?.tarif||'—'}</div><div class="ss">Ce forfait</div></div>
-  </div>
-  <div class="card"><div class="ch"><h3>Informations de compte</h3></div><div class="cb">
-    <p style="font-size:13px;color:var(--g600)"><strong>Élève :</strong> ${myEl?.nom||'—'}</p>
-    <p style="font-size:13px;color:var(--g600);margin-top:6px"><strong>Enseignant(e) :</strong> ${myEl?.prof||'—'}</p>
-    <p style="font-size:13px;color:var(--g600);margin-top:6px"><strong>Lien cours :</strong> ${myEl?.lien?`<a href="${myEl.lien}" target="_blank" style="color:var(--navy)">Rejoindre le groupe</a>`:'Non renseigné'}</p>
-  </div></div>`;
+  `).join("");
 }
 
 // ══════════════════════════════════════════════
-// GESTION ÉLÈVES — TABLE PRINCIPALE
+// ROUTER
 // ══════════════════════════════════════════════
-function pgGestEleves() {
-  return `<div class="card">
-    <div class="ch">
-      <h3>Base élèves — ${ELEVES_DB.length} actifs</h3>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <div class="sw"><span class="si2">🔍</span><input type="text" id="srch" placeholder="Rechercher nom, email, prof..." style="width:220px;padding-left:32px;padding:7px 10px 7px 32px;border:1.5px solid var(--g200);border-radius:var(--r);font-size:13px;outline:none" oninput="filterEleves(this.value)"></div>
-        <button class="btn btn-out2 btn-sm" onclick="openModal('mo-import')">📥 Import CSV</button>
-        <button class="btn btn-navy btn-sm" onclick="openModal('mo-eleve')">+ Ajouter</button>
-        <button class="btn btn-out2 btn-sm" onclick="openModal('mo-export')">📊 Sheets</button>
+function showPage(id){
+  curPage=id;
+
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  document.getElementById("ni-"+id)?.classList.add("active");
+
+  const pages={
+    db:pgDashboard,
+    histo:pgHisto,
+    tarifs:pgTarifs,
+    "gest-eleves":pgGestEleves,
+    stats:pgStats,
+    rapports:pgRapports
+  };
+
+  document.getElementById("pgc").innerHTML=(pages[id]||pgComingSoon)();
+}
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function badge(t,c=""){return `<span class="badge ${c}">${t}</span>`;}
+function toast(t){
+  const el=document.getElementById("toast-el");
+  if(!el) return;
+  el.textContent=t;
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),2500);
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════
+function pgDashboard(){
+  return `
+  <div class="card">
+    <h3>Dashboard</h3>
+    <p>Élèves : ${ELEVES_DB.length}</p>
+    <p>Professeurs : ${PROFS_DB.length}</p>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// ÉLÈVES
+// ══════════════════════════════════════════════
+function pgGestEleves(){
+  return `
+  <div class="card">
+    <h3>Élèves (${ELEVES_DB.length})</h3>
+    ${ELEVES_DB.map(e=>`
+      <div style="padding:8px;border-bottom:1px solid #eee">
+        ${e.nom} — ${e.matiere||""}
       </div>
-    </div>
-    ${pgGestElevesTable(ELEVES_DB, false)}
+    `).join("")}
   </div>`;
 }
 
-function pgGestElevesTable(data, compact=false) {
-  const rows = data.map(e=>{
-    const initials = e.nom.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
-    const tarifCalc = calcTarif(e.freq, e.type, e.duree);
-    const prixAff = tarifCalc ? tarifCalc+'€' : (e.tarif||'—');
-    return `<tr>
-      <td><div style="display:flex;align-items:center;gap:8px">
-        <div class="av av-g">${initials}</div>
-        <div><div style="font-weight:600;font-size:13.5px">${e.nom}</div>
-        <div style="font-size:11px;color:var(--g400)">${e.email||'sans email'} · ${e.pays||'—'}</div></div>
-      </div></td>
-      <td style="font-size:13px">${e.matiere||'—'}</td>
-      <td style="font-size:13px">${e.prof||'—'}</td>
-      <td>${badge(e.type||'—','b-navy')}</td>
-      <td style="font-size:12px">${e.duree||'—'} · ${e.freq||'—'}×/sem</td>
-      <td style="font-weight:700;color:var(--navy)">${prixAff}</td>
-      <td><div style="display:flex;gap:4px">
-        <button class="btn btn-sm btn-out2" onclick="showFiche(${ELEVES_DB.indexOf(e)})">👁</button>
-        ${!compact?`<a href="${e.lien||'#'}" target="_blank" class="btn btn-sm btn-navy" ${!e.lien?'style="opacity:.5;pointer-events:none"':''}>TG</a>`:''}
-      </div></td>
-    </tr>`;
-  }).join('');
-
-  return `<div class="tw"><table>
-    <thead><tr><th>Élève</th><th>Matière</th><th>Professeur</th><th>Type</th><th>Durée / Fqce</th><th>Tarif/mois</th><th>Actions</th></tr></thead>
-    <tbody id="eleves-tbody">${rows}</tbody>
-  </table></div>`;
-}
-
-function filterEleves(q) {
-  const lower = q.toLowerCase();
-  const filtered = q.length<2 ? ELEVES_DB : ELEVES_DB.filter(e=>
-    (e.nom||'').toLowerCase().includes(lower) ||
-    (e.email||'').toLowerCase().includes(lower) ||
-    (e.prof||'').toLowerCase().includes(lower) ||
-    (e.matiere||'').toLowerCase().includes(lower) ||
-    (e.pays||'').toLowerCase().includes(lower) ||
-    (e.telegram||'').toLowerCase().includes(lower)
-  );
-  const tbody = document.getElementById('eleves-tbody');
-  if(!tbody) return;
-  tbody.innerHTML = filtered.map(e=>{
-    const initials=e.nom.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
-    const tarifCalc=calcTarif(e.freq,e.type,e.duree);
-    const prixAff=tarifCalc?tarifCalc+'€':(e.tarif||'—');
-    return `<tr>
-      <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-g">${initials}</div>
-        <div><div style="font-weight:600;font-size:13.5px">${e.nom}</div><div style="font-size:11px;color:var(--g400)">${e.email||'sans email'} · ${e.pays||'—'}</div></div></div></td>
-      <td style="font-size:13px">${e.matiere||'—'}</td>
-      <td style="font-size:13px">${e.prof||'—'}</td>
-      <td>${badge(e.type||'—','b-navy')}</td>
-      <td style="font-size:12px">${e.duree||'—'} · ${e.freq||'—'}×/sem</td>
-      <td style="font-weight:700;color:var(--navy)">${prixAff}</td>
-      <td><button class="btn btn-sm btn-out2" onclick="showFiche(${ELEVES_DB.indexOf(e)})">👁</button></td>
-    </tr>`;
-  }).join('');
-  // Afficher le compte
-  const ch = document.querySelector('.ch h3');
-  if(ch) ch.textContent = `Base élèves — ${filtered.length} résultat${filtered.length>1?'s':''} / ${ELEVES_DB.length} actifs`;
-}
-
-function showFiche(idx) {
-  const e = ELEVES_DB[idx];
-  if(!e) return;
-  const initials=e.nom.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
-  const tarifCalc=calcTarif(e.freq,e.type,e.duree);
-  document.getElementById('fiche-content').innerHTML = `
-  <div class="fiche-header">
-    <div class="fiche-av">${initials}</div>
-    <div class="fiche-info">
-      <h2>${e.nom}</h2>
-      <p>${e.email||'Email non renseigné'} · ${e.pays||'Pays non renseigné'}</p>
-    </div>
-  </div>
-  <div class="fiche-body">
-    <div class="fiche-row"><strong>Numéro</strong>${e.id||'—'}</div>
-    <div class="fiche-row"><strong>Responsable</strong>${e.responsable||'—'}</div>
-    <div class="fiche-row"><strong>Matière</strong>${e.matiere||'—'}</div>
-    <div class="fiche-row"><strong>Enseignant(e)</strong>${e.prof||'—'}</div>
-    <div class="fiche-row"><strong>Type de cours</strong>${e.type||'—'}</div>
-    <div class="fiche-row"><strong>Durée séance</strong>${e.duree||'—'}</div>
-    <div class="fiche-row"><strong>Fréquence</strong>${e.freq||'—'} fois/semaine</div>
-    <div class="fiche-row"><strong>Tarif mensuel</strong>${tarifCalc?'<strong style="color:var(--navy);font-size:16px">'+tarifCalc+'€</strong>':(e.tarif||'—')}</div>
-    <div class="fiche-row"><strong>Téléphone</strong>${e.tel||'—'}</div>
-    <div class="fiche-row"><strong>Telegram</strong>${e.telegram||'—'}</div>
-    ${e.lien?`<div class="fiche-row" style="grid-column:1/-1"><strong>Lien groupe Telegram</strong><a href="${e.lien}" target="_blank" style="color:var(--navy);word-break:break-all">${e.lien}</a></div>`:''}
-    ${e.commentaire?`<div class="fiche-row" style="grid-column:1/-1"><strong>Commentaire</strong>${e.commentaire}</div>`:''}
+// ══════════════════════════════════════════════
+// TARIFS
+// ══════════════════════════════════════════════
+function pgTarifs(){
+  return `
+  <div class="card">
+    <h3>Tarifs</h3>
+    <p>Grille 2025 active</p>
   </div>`;
-  openModal('mo-fiche');
 }
 
 // ══════════════════════════════════════════════
-// GRILLE TARIFAIRE COMPLÈTE
+// HISTORIQUE
 // ══════════════════════════════════════════════
-function pgTarifs() {
-  const durees = ['20min','30min','40min','1h'];
-  const types = ['Solo','Duo','DuoFratrie','Groupe'];
-  const typeLabels = {Solo:'Individuel',Duo:'Binôme',DuoFratrie:'Duo fratrie',Groupe:'Groupe (+3)'};
-  const durLabels = {'20min':'20 min','30min':'30 min','40min':'40 min','1h':'60 min'};
-
-  let html = `<div style="margin-bottom:1.5rem;padding:.875rem;background:var(--err-bg);border-radius:var(--r);font-size:13px;color:#993c1d;border-left:4px solid var(--err)">
-    🔒 <strong>Confidentiel — Réservé aux élèves d'Iqrawartaqi.</strong> Ne pas diffuser.
+function pgHisto(){
+  return `
+  <div class="card">
+    <h3>Historique</h3>
+    ${seances.length ? seances.map(s=>`
+      <div>${s.date} - ${s.mat}</div>
+    `).join("") : "<p>Aucune séance</p>"}
   </div>`;
-
-  html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.5rem">`;
-  for(let f=1;f<=7;f++) {
-    html+=`<button class="btn btn-sm ${f===1?'btn-navy':'btn-out2'}" id="freq-btn-${f}" onclick="showFreqTab(${f})">${f}×/semaine</button>`;
-  }
-  html += `</div>`;
-
-  for(let f=1;f<=7;f++) {
-    html += `<div id="freq-tab-${f}" ${f!==1?'class="hidden"':''}>
-    <div class="card">
-      <div class="ch"><h3>${f} fois par semaine</h3></div>
-      <div class="tw"><table>
-        <thead><tr><th>Type</th>${durees.map(d=>`<th>${durLabels[d]}</th>`).join('')}</tr></thead>
-        <tbody>
-          ${types.map(t=>`<tr>
-            <td style="font-weight:600;color:var(--navy)">${typeLabels[t]}</td>
-            ${durees.map(d=>{
-              const p=TARIFS[f]?.[t]?.[d==='1h'?60:parseInt(d)];
-              return`<td style="font-weight:700;font-size:15px">${p?p+'€':'—'}</td>`;
-            }).join('')}
-          </tr>`).join('')}
-        </tbody>
-      </table></div>
-    </div>
-    <div style="padding:.875rem;background:var(--gold-pale);border-radius:var(--r);font-size:12px;color:var(--g600);margin-bottom:1rem">
-      <strong>Options disponibles (supplément/mois) :</strong> Quizz/évaluations +10€ · Enregistrement +10€ · Fiches fawaid +10€ · Programmes spéciaux (El Forqan, Zad El Fossha...) ~12€/moustawa<br>
-      <strong>Cours test :</strong> 3,50€ (30-40 min) · <strong>Frais de session :</strong> 8€ (nouvelle session, offerts aux Mouhajirouns dans le besoin)
-    </div></div>`;
-  }
-
-  return html;
-}
-
-function showFreqTab(f) {
-  for(let i=1;i<=7;i++) {
-    document.getElementById('freq-tab-'+i)?.classList.add('hidden');
-    const b=document.getElementById('freq-btn-'+i);
-    if(b){b.className='btn btn-sm btn-out2';}
-  }
-  document.getElementById('freq-tab-'+f)?.classList.remove('hidden');
-  const b=document.getElementById('freq-btn-'+f);
-  if(b) b.className='btn btn-sm btn-navy';
 }
 
 // ══════════════════════════════════════════════
-// PAGES DIVERSES
+// RAPPORTS
 // ══════════════════════════════════════════════
-function pgPlanning(){return`<div class="card"><div class="ch"><h3>Planning de la semaine</h3></div><div class="cb"><p style="color:var(--g400);font-size:13px">Le planning est géré via Telegram. Lien vers votre groupe :</p><div style="margin-top:1rem">${ELEVES_DB.filter(e=>e.lien).slice(0,5).map(e=>`<div class="zoom-card" style="margin-bottom:.75rem"><div class="zic">📱</div><div style="flex:1"><div style="font-weight:600;font-size:14px">${e.nom}</div><div style="font-size:12px;color:var(--g400)">${e.matiere} · ${e.prof}</div></div><a href="${e.lien}" target="_blank" class="btn btn-sm btn-navy">Rejoindre</a></div>`).join('')}</div></div></div>`;}
+function pgRapports(){
+  return `
+  <div class="card">
+    <h3>Rapports</h3>
+    <p>Module simplifié OK</p>
+  </div>`;
+}
 
-function pgZoom(){
-  const avecLien=ELEVES_DB.filter(e=>e.lien&&e.email===curUser?.email);
-  const tousLiens=curRole==='admin'?ELEVES_DB.filter(e=>e.lien).slice(0,20):avecLien;
-  return`<div class="card"><div class="ch"><h3>Liens Telegram / cours</h3>${curRole==='admin'?`<span style="font-size:12px;color:var(--g400)">${tousLiens.length} groupes</span>`:''}</div><div class="cb">
-    ${tousLiens.length?tousLiens.map(e=>`<div class="zoom-card"><div class="zic">📱</div><div style="flex:1"><div style="font-weight:600;font-size:14px">${e.nom}</div><div style="font-size:12px;color:var(--g400)">${e.matiere} · ${e.prof}</div></div><a href="${e.lien}" target="_blank" class="btn btn-sm btn-navy">Rejoindre</a></div>`).join(''):'<p style="color:var(--g400);font-size:13px">Aucun lien enregistré pour votre compte.</p>'}
-  </div></div>`;}
-
-function pgHisto(){return`<div class="card"><div class="ch"><h3>Historique des séances</h3></div><div class="tw"><table><thead><tr><th>Date</th><th>Matière</th><th>Enseignant</th><th>Durée</th><th>Présence</th><th>Note</th></tr></thead><tbody>${seances.length?seances.map(s=>`<tr><td>${s.date}</td><td>${s.mat}</td><td>${s.prof||'—'}</td><td>${s.dur}min</td><td>${badge(s.pres,'b-'+( s.pres==='Présent(e)'?'ok':s.pres==='Absent(e)'?'err':'warn'))}</td><td style="font-size:12px;max-width:200px">${s.obs||'—'}</td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:var(--g400);padding:2rem">Aucune séance enregistrée</td></tr>'}</tbody></table></div></div>`;}
-
-function pgRapports(){return`<div class="card"><div class="ch"><h3>Rapports de cours</h3><button class="btn btn-sm btn-gold" onclick="openModal('mo-rapport');document.getElementById('rp-date').value=new Date().toISOString().slice(0,10)">+ Nouveau rapport</button></div><div class="cb">${seances.length?seances.map(s=>`<div style="border:1px solid var(--g200);border-radius:var(--r);padding:1rem;margin-bottom:.875rem"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>${s.mat}</strong><span style="font-size:12px;color:var(--g400)">${s.date} · ${s.dur}min</span></div><p style="font-size:13px;margin-bottom:6px"><strong>Contenu :</strong> ${s.cnt||'—'}</p><p style="font-size:13px;margin-bottom:6px"><strong>Participation :</strong> ${s.part||'—'}</p>${s.dev?`<p style="font-size:13px;background:var(--warn-bg);padding:6px 10px;border-radius:6px"><strong>Devoirs :</strong> ${s.dev}</p>`:''}<p style="font-size:13px;margin-top:6px;color:var(--g600)">${s.obs||''}</p></div>`).join(''):'<p style="color:var(--g400);font-size:13px;text-align:center;padding:2rem">Aucun rapport saisi. Cliquez sur "+ Nouveau rapport" pour commencer.</p>'}</div></div>`;}
-
-function pgPresences(){
-  const pres=seances.filter(s=>s.pres==='Présent(e)').length;
-  const abs=seances.filter(s=>s.pres==='Absent(e)').length;
-  const total=seances.length||1;
-  return`<div class="sg"><div class="sc ok2"><div class="si">✅</div><div class="sl">Présences</div><div class="sv">${pres}</div></div><div class="sc" style="--si-bg:var(--err-bg)"><div class="si" style="background:var(--err-bg)">❌</div><div class="sl">Absences</div><div class="sv">${abs}</div></div><div class="sc gold"><div class="si">📊</div><div class="sl">Taux</div><div class="sv">${Math.round(pres/total*100)}%</div></div></div>
-  ${pgHisto()}`;}
-
-function pgPaiements(){return`<div class="card"><div class="ch"><h3>Factures</h3></div><div class="tw"><table><thead><tr><th>Réf.</th><th>Période</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead><tbody>${factures.length?factures.map(f=>`<tr><td style="font-family:monospace;font-size:12px">${f.id}</td><td>${f.periode}</td><td style="font-weight:700">${f.montant}€</td><td>${badge(f.statut,f.statut==='Payée'?'b-ok':f.statut==='En attente'?'b-warn':'b-err')}</td><td>${f.statut!=='Payée'?`<button class="btn btn-sm btn-gold" onclick="toast('Redirection PayPal...')">Payer</button>`:''}</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--g400);padding:2rem">Aucune facture</td></tr>'}</tbody></table></div></div>`;}
-
-function pgRenouvellement(){
-  return`<div class="card"><div class="ch"><h3>Renouveler mon forfait</h3></div><div class="cb">
-  <p style="font-size:13px;color:var(--g600);margin-bottom:1.25rem">Pour renouveler votre forfait, veuillez contacter l'administration via Telegram ou utiliser le formulaire ci-dessous.</p>
-  <div class="fgrid">
-    <div class="form-row"><label>Type souhaité</label><select><option>Solo</option><option>Duo</option><option>Duo fratrie</option><option>Groupe</option></select></div>
-    <div class="form-row"><label>Durée souhaitée</label><select><option>20 min</option><option>30 min</option><option selected>40 min</option><option>60 min</option></select></div>
-  </div>
-  <div class="form-row"><label>Fréquence souhaitée</label><select><option>1 fois/sem</option><option selected>2 fois/sem</option><option>3 fois/sem</option></select></div>
-  <div class="form-row"><label>Message (optionnel)</label><textarea placeholder="Toute information utile pour l'administration..."></textarea></div>
-  <button class="btn btn-navy" onclick="toast('Demande de renouvellement envoyée !')">Envoyer la demande</button>
-  </div></div>`;}
-
-function pgMsgs(){return`<div class="g2"><div class="card"><div class="ch"><h3>Messages</h3></div><div class="cb">${[{de:'Administration',a:'Élèves',txt:'Rappel : les cours TEST sont disponibles à 3,50€. Idéal pour évaluer votre niveau avant inscription.',date:'10/06/2025'},{de:'Administration',a:'Tous',txt:"JazakAllah khayr pour votre confiance. N'hésitez pas à contacter l'administration pour tout renouvellement.",date:'01/06/2025'}].map(m=>`<div class="msg-item"><div class="av av-n">${m.de.slice(0,2).toUpperCase()}</div><div style="flex:1"><div class="msg-meta">${m.de} · ${m.date}</div><div class="msg-bubble"><div class="msg-txt">${m.txt}</div></div></div></div>`).join('')}</div></div>
-  <div class="card"><div class="ch"><h3>Nouveau message</h3></div><div class="cb"><div class="form-row"><label>Destinataire</label><select><option>Administration</option></select></div><div class="form-row"><label>Objet</label><input type="text" placeholder="Objet"></div><div class="form-row"><label>Message</label><textarea placeholder="Assalamu alaykum..."></textarea></div><button class="btn btn-navy" onclick="toast('Message envoyé — JazakAllah khayr')">Envoyer</button></div></div></div>`;}
-
-function pgMesEleves(){return`<div class="card"><div class="ch"><h3>Mes élèves</h3><button class="btn btn-sm btn-gold" onclick="openModal('mo-rapport');document.getElementById('rp-date').value=new Date().toISOString().slice(0,10)">+ Rapport</button></div>${pgGestElevesTable(ELEVES_DB.slice(0,15))}</div>`;}
-
-function pgRapportCours(){return`<div class="card"><div class="ch"><h3>Rédiger un rapport de séance</h3></div><div class="cb"><div class="fgrid"><div class="form-row"><label>Élève</label><select>${ELEVES_DB.map(e=>`<option>${e.nom}</option>`).join('')}</select></div><div class="form-row"><label>Date</label><input type="date" value="${new Date().toISOString().slice(0,10)}"></div></div><div class="fgrid"><div class="form-row"><label>Matière</label><select><option>Arabe</option><option>Qur'an — Tajweed</option><option>Qur'an — Hifz</option><option>Aqidah</option><option>Sciences islamiques</option><option>Fiqh</option><option>Sira</option></select></div><div class="form-row"><label>Durée (min)</label><select><option>20</option><option>30</option><option selected>40</option><option>60</option></select></div></div><div class="form-row"><label>Contenu</label><input type="text" placeholder="Ex : Chapitre 4 — Les particules"></div><div class="form-row"><label>Présence</label><div class="niv-wrap"><button class="niv-btn sel" onclick="selNiv(this,'pp')">✅ Présent(e)</button><button class="niv-btn" onclick="selNiv(this,'pp')">❌ Absent(e)</button><button class="niv-btn" onclick="selNiv(this,'pp')">⚠️ Retard</button></div></div><div class="form-row"><label>Participation</label><div class="niv-wrap"><button class="niv-btn" onclick="selNiv(this,'pt')">⭐ Faible</button><button class="niv-btn sel" onclick="selNiv(this,'pt')">⭐⭐ Moyen</button><button class="niv-btn" onclick="selNiv(this,'pt')">⭐⭐⭐ Bon</button><button class="niv-btn" onclick="selNiv(this,'pt')">⭐⭐⭐⭐ Excellent</button></div></div><div class="form-row"><label>Devoirs</label><input type="text" placeholder="Exercices à faire"></div><div class="form-row"><label>Observations</label><textarea></textarea></div><div class="fa"><button class="btn btn-gold" onclick="saveRapport()">✅ Enregistrer et notifier</button></div></div></div>`;}
-
-function pgProgression(){return`<div class="card"><div class="ch"><h3>Progression des élèves</h3></div><div class="cb">${ELEVES_DB.slice(0,20).map(e=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--g100)"><div class="av av-g">${e.nom.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase()}</div><div style="flex:1"><div style="font-weight:600;font-size:13.5px">${e.nom}</div><div style="font-size:12px;color:var(--g400)">${e.matiere} · ${e.prof}</div></div><span class="badge b-navy">${e.type}</span></div>`).join('')}</div></div>`;}
-
-function pgAbsences(){return`<div class="card"><div class="ch"><h3>Absences déclarées</h3><button class="btn btn-sm btn-err" onclick="openModal('mo-rapport')">Déclarer absence</button></div><div class="tw"><table><thead><tr><th>Élève</th><th>Date</th><th>Statut</th></tr></thead><tbody>${seances.filter(s=>s.pres!=='Présent(e)').length?seances.filter(s=>s.pres!=='Présent(e)').map(s=>`<tr><td>${s.eleve}</td><td>${s.date}</td><td>${badge(s.pres,'b-err')}</td></tr>`).join(''):'<tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--g400)">Aucune absence enregistrée</td></tr>'}</tbody></table></div></div>`;}
-
-function pgGestProfs(){
-  const profs=[...new Set(ELEVES_DB.map(e=>e.prof).filter(Boolean))].sort();
-  return`<div class="sg">${profs.slice(0,4).map(p=>{const es=ELEVES_DB.filter(e=>e.prof===p);return`<div class="sc gold"><div class="si">🎓</div><div class="sl">${p}</div><div class="sv">${es.length}</div><div class="ss">élèves</div></div>`;}).join('')}</div>
-  <div class="card"><div class="ch"><h3>${profs.length} enseignants actifs</h3></div><div class="tw"><table><thead><tr><th>Enseignant(e)</th><th>Nb élèves</th><th>Matières</th></tr></thead><tbody>${profs.map(p=>{const es=ELEVES_DB.filter(e=>e.prof===p);const mats=[...new Set(es.map(e=>e.matiere).filter(Boolean))].slice(0,3).join(', ');return`<tr><td style="font-weight:600">${p}</td><td>${badge(es.length,'b-navy')}</td><td style="font-size:12px;color:var(--g600)">${mats}</td></tr>`;}).join('')}</tbody></table></div></div>`;}
-
-function pgRenouvellements(){return`<div class="card"><div class="ch"><h3>Renouvellements à suivre</h3></div><div class="cb"><p style="color:var(--g400);font-size:13px">Gestion des renouvellements mensuel. Les paiements en retard peuvent être relancés via Telegram.</p><div style="margin-top:1rem"><button class="btn btn-gold" onclick="toast('Relances Telegram simulées pour tous les retardataires')">📱 Relancer par Telegram</button></div></div></div>`;}
-
-function pgCompta(){
-  const pays=[...new Set(ELEVES_DB.map(e=>e.pays).filter(Boolean))];
-  const totalMens=ELEVES_DB.reduce((s,e)=>{const p=calcTarif(e.freq,e.type,e.duree);return s+(p||0);},0);
-  return`<div class="sg"><div class="sc ok2"><div class="si">💰</div><div class="sl">CA mensuel estimé</div><div class="sv">${totalMens.toLocaleString()}€</div><div class="ss">Grille 2025</div></div><div class="sc gold"><div class="si">👥</div><div class="sl">Élèves facturables</div><div class="sv">${ELEVES_DB.length}</div></div><div class="sc navy"><div class="si">🌍</div><div class="sl">Pays</div><div class="sv">${pays.length}</div></div></div>
-  <div class="card"><div class="ch"><h3>Répartition par type de cours</h3></div><div class="cb">${['Solo','Duo','DuoFratrie','Groupe'].map(t=>{const n=ELEVES_DB.filter(e=>e.type===t).length;return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span>${t==='Solo'?'Individuel':t==='DuoFratrie'?'Duo fratrie':t}</span><span style="color:var(--g400)">${n} élèves</span></div><div class="pb-w"><div class="pb" style="width:${Math.round(n/ELEVES_DB.length*100)}%"></div></div></div>`;}).join('')}</div></div>`;}
-
+// ══════════════════════════════════════════════
+// STATS
+// ══════════════════════════════════════════════
 function pgStats(){
-  const pays=[...new Set(ELEVES_DB.map(e=>e.pays).filter(Boolean))].sort();
-  const mats=[...new Set(ELEVES_DB.map(e=>e.matiere).filter(Boolean))];
-  return`<div class="sg"><div class="sc gold"><div class="si">👥</div><div class="sl">Total élèves actifs</div><div class="sv">${ELEVES_DB.length}</div></div><div class="sc navy"><div class="si">🌍</div><div class="sl">Pays représentés</div><div class="sv">${pays.length}</div></div><div class="sc ok2"><div class="si">🎓</div><div class="sl">Enseignants</div><div class="sv">${PROFS_DB.length}</div></div><div class="sc warn2"><div class="si">📚</div><div class="sl">Matières</div><div class="sv">${mats.length}</div></div></div>
-  <div class="g2">
-    <div class="card"><div class="ch"><h3>Pays (top 10)</h3></div><div class="cb">${pays.slice(0,10).map(p=>{const n=ELEVES_DB.filter(e=>e.pays===p).length;return`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px;border-bottom:1px solid var(--g100)"><span>${p}</span><span class="badge b-navy">${n}</span></div>`;}).join('')}</div></div>
-    <div class="card"><div class="ch"><h3>Types de cours</h3></div><div class="cb">${['Solo','Duo','DuoFratrie','Groupe'].map(t=>{const n=ELEVES_DB.filter(e=>e.type===t).length;const labels={Solo:'Individuel',Duo:'Binôme',DuoFratrie:'Duo fratrie',Groupe:'Groupe'};return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${labels[t]}</span><span>${n}</span></div><div class="pb-w"><div class="pb" style="width:${Math.round(n/ELEVES_DB.length*100)}%"></div></div></div>`;}).join('')}</div></div>
-  </div>`;}
-
-function pgComingSoon(){return`<div class="card"><div class="cb" style="text-align:center;padding:3rem"><div style="font-size:48px;margin-bottom:1rem">🚧</div><h3 style="color:var(--navy)">Page en cours de développement</h3><p style="color:var(--g400);margin-top:.5rem">Cette section sera disponible prochainement.</p></div></div>`;}
-
-// ══════════════════════════════════════════════
-// ACTIONS
-// ══════════════════════════════════════════════
-function saveRapport(){
-  const eleve = document.getElementById('rp-eleve')?.value||'';
-  const date  = document.getElementById('rp-date')?.value||new Date().toISOString().slice(0,10);
-  const mat   = document.getElementById('rp-mat')?.value||'';
-  const dur   = document.getElementById('rp-dur')?.value||'';
-  const cnt   = document.getElementById('rp-cnt')?.value||'';
-  const dev   = document.getElementById('rp-dev')?.value||'';
-  const obs   = document.getElementById('rp-obs')?.value||'';
-  const pres  = document.querySelector('#mo-rapport .niv-btn.sel')?.textContent?.trim()||'Présent(e)';
-  const part  = document.querySelectorAll('#mo-rapport .niv-btn.sel')?.[1]?.textContent?.trim()||'Moyen';
-  seances.push({eleve,date,mat,dur,cnt,dev,obs,pres,part,prof:curUser?.email});
-  saveLocal();
-  closeModal('mo-rapport');
-  toast('Rapport enregistré pour '+eleve);
-  if(curPage==='histo'||curPage==='rapports'||curPage==='rapport-cours') showPage(curPage);
-}
-
-function saveEleve(){
-  const nom=document.getElementById('ne-nom')?.value?.trim();
-  if(!nom){toast('Veuillez entrer un nom','err');return;}
-  const nouvel={
-    id:'E'+Date.now(),nom:document.getElementById('ne-prenom')?.value?.trim()+' '+nom,
-    email:document.getElementById('ne-email')?.value?.trim(),
-    age:document.getElementById('ne-age')?.value,
-    telegram:document.getElementById('ne-tg')?.value?.trim(),
-    pays:document.getElementById('ne-pays')?.value?.trim(),
-    matiere:document.getElementById('ne-mat')?.value,
-    prof:document.getElementById('ne-prof')?.value,
-    type:document.getElementById('ne-type')?.value,
-    duree:document.getElementById('ne-dur')?.value,
-    freq:document.getElementById('ne-freq')?.value,
-    statut:'Normal',responsable:'',tel:'',lien:'',commentaire:''
-  };
-  ELEVES_DB.push(nouvel);
-  closeModal('mo-eleve');
-  toast('Élève ajouté : '+nouvel.nom);
-  if(curPage==='gest-eleves') showPage('gest-eleves');
-}
-
-function handleCSV(input){
-  const file=input.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const lines=e.target.result.split('\n').filter(l=>l.trim());
-    if(lines.length<2){toast('Fichier vide ou invalide','err');return;}
-    const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
-    importBuffer=lines.slice(1).map(line=>{
-      const vals=line.split(',').map(v=>v.trim().replace(/"/g,''));
-      const obj={};
-      headers.forEach((h,i)=>obj[h]=vals[i]||'');
-      return obj;
-    }).filter(r=>r['']!=='Arrêt');
-    document.getElementById('import-preview').innerHTML=`<div style="background:var(--ok-bg);border-radius:var(--r);padding:.875rem;font-size:13px;color:#0f6e56"><strong>${importBuffer.length} élèves</strong> prêts à importer (arrêts exclus)</div>`;
-    document.getElementById('btn-confirm-import').classList.remove('hidden');
-  };
-  reader.readAsText(file,'utf-8');
-}
-
-function confirmImport(){
-  importBuffer.forEach(row=>{
-    ELEVES_DB.push({
-      id:row['Numéro']||row['id']||'',
-      nom:(row['Prénom']||'').trim()+' '+(row['Nom']||row['NOM']||'').trim(),
-      email:row['Email']||'',tel:row['Téléphone formaté']||row['tel']||'',
-      telegram:row['Identifiant Telegram']||row['telegram']||'',
-      pays:row['Pays']||'',matiere:row['Matières']||row['matiere']||'',
-      prof:row['Professeurs']||row['prof']||'',type:row['Type de cours']||row['type']||'',
-      duree:row['Durée']||row['duree']||'',freq:row['Fqce']||row['freq']||'',
-      tarif:row['Tarif']||'',total:row['Total']||'',lien:row['Lien']||'',
-      statut:'Normal',responsable:'',age:'',commentaire:''
-    });
-  });
-  importBuffer=[];
-  closeModal('mo-import');
-  toast(`${ELEVES_DB.length} élèves dans la base`);
-  if(curPage==='gest-eleves') showPage('gest-eleves');
-}
-
-function exportCSV(){
-  closeModal('mo-export');
-  const headers=['id','nom','email','tel','telegram','pays','matiere','prof','type','duree','freq','tarif'];
-  const rows=[headers,...ELEVES_DB.map(e=>headers.map(h=>'"'+(e[h]||'')+'"'))];
-  const blob=new Blob(['\uFEFF'+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='iqrawartaqi-eleves-'+new Date().toISOString().slice(0,10)+'.csv';a.click();
-  toast('CSV exporté !');
-}
-
-function syncSheets(){
-  const url=document.getElementById('sh-url')?.value?.trim();
-  if(!url){toast('Collez l'URL Apps Script','err');return;}
-  const payload={action:'sync',timestamp:new Date().toISOString(),eleves:ELEVES_DB,seances,factures};
-  toast('Synchronisation en cours...');
-  fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-    .then(()=>{closeModal('mo-export');toast('Données synchronisées vers Google Sheets !');})
-    .catch(()=>toast('Erreur réseau — téléchargez le CSV','err'));
+  return `
+  <div class="card">
+    <h3>Stats</h3>
+    <p>Total élèves : ${ELEVES_DB.length}</p>
+  </div>`;
 }
 
 // ══════════════════════════════════════════════
-// INIT DATE
+// FALLBACK
 // ══════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded',()=>{
-  const today=new Date().toISOString().slice(0,10);
-  document.querySelectorAll('input[type="date"]').forEach(d=>{if(!d.value)d.value=today;});
+function pgComingSoon(){
+  return `
+  <div class="card">
+    <h3>Coming soon</h3>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+document.addEventListener("DOMContentLoaded",()=>{
+  setupSidebar();
+  showPage("db");
 });
-</script>
-</body>
-</html>
