@@ -1,3 +1,25 @@
+window.ELEVES_DB = window.ELEVES_DB || [];
+window.seances = window.seances || [];
+window.factures = window.factures || [];
+window.curPage = window.curPage || "";
+window.curUser = window.curUser || null;
+window.curRole = window.curRole || "admin";
+
+document.addEventListener("DOMContentLoaded", () => {
+  try {
+    if(typeof showPage === "function"){
+      showPage("gest-eleves");
+    }
+  } catch (e) {
+    console.log("Init error:", e);
+  }
+});
+
+const tbody = document.getElementById('eleves-tbody');
+if(!tbody) return;
+
+
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
