@@ -241,21 +241,21 @@ tr:hover td{background:var(--g50)}
 </svg>
 </div>
 
-    <!-- LOGIN ---->
+    <!-- LOGIN PANEL -->
     <div id="panel-login">
-      <h1 style="color:var(--navy);font-size:20px;font-weight:700;font-family:'Anton',sans-serif;letter-spacing:1px;text-align:center;margin-bottom:4px">IQRAWARTAQI</h1>
+      <h1 style="color:var(--navy);font-size:22px;font-weight:700;font-family:'Anton',sans-serif;letter-spacing:1px;text-align:center;margin-bottom:4px">IQRAWARTAQI</h1>
       <p style="color:var(--g400);font-size:13px;text-align:center;margin-bottom:1.5rem">Votre espace personnel</p>
-      <div class="rtabs" id="role-tabs">
-        <button class="rtab active" onclick="setRole('eleve')" id="tab-eleve"><span>🎓</span>Élève</button>
-        <button class="rtab" onclick="setRole('parent')" id="tab-parent"><span>👨‍👩‍👧</span>Parent</button>
-        <button class="rtab" onclick="setRole('enseignant')" id="tab-enseignant"><span>📚</span>Enseignant</button>
-        <button class="rtab" onclick="setRole('admin')" id="tab-admin"><span>⚙️</span>Admin</button>
+      <div class="rtabs">
+        <button class="rtab active" id="rt-eleve" onclick="setRole('eleve')"><span>🎓</span>Élève</button>
+        <button class="rtab" id="rt-parent" onclick="setRole('parent')"><span>👨‍👩‍👧</span>Parent</button>
+        <button class="rtab" id="rt-enseignant" onclick="setRole('enseignant')"><span>📚</span>Enseignant</button>
+        <button class="rtab" id="rt-admin" onclick="setRole('admin')"><span>⚙️</span>Admin</button>
       </div>
       <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="votre@email.com" autocomplete="email"></div>
-      <div class="fg" style="margin-top:.875rem"><label>Mot de passe</label><input type="password" id="l-pw" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="fg"><label>Mot de passe</label><input type="password" id="l-pw" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <div class="auth-err" id="l-err"></div>
-      <button class="btn-main" id="l-btn" onclick="doLogin()" style="margin-top:1.25rem;width:100%">Se connecter</button>
-      <div class="auth-link" style="text-align:center;margin-top:.875rem"><a onclick="showReset()" style="cursor:pointer;color:var(--gold);font-size:13px">Mot de passe oublié ?</a></div>
+      <button class="btn-main" id="l-btn" onclick="doLogin()">Se connecter</button>
+      <div class="auth-link"><a onclick="showReset()">Mot de passe oublié ?</a></div>
     </div>
 
     <!-- RESET MDP -->
@@ -557,14 +557,21 @@ let curRole = 'eleve';
 let curUser = null;
 let curPage = '';
 let importBuffer = [];
-let seances = JSON.parse(localStorage.getItem('iqra_seances') || '[]');
-let factures = JSON.parse(localStorage.getItem('iqra_factures') || '[]');
-let utilisateurs = JSON.parse(localStorage.getItem('iqra_users') || '[]');
+let seances = [];
+let factures = [];
+let utilisateurs = [];
+
+// Chargement depuis localStorage avec fallback silencieux
+try { seances = JSON.parse(localStorage.getItem('iqra_seances') || '[]'); } catch(e) {}
+try { factures = JSON.parse(localStorage.getItem('iqra_factures') || '[]'); } catch(e) {}
+try { utilisateurs = JSON.parse(localStorage.getItem('iqra_users') || '[]'); } catch(e) {}
 
 function saveLocal() {
-  localStorage.setItem('iqra_seances', JSON.stringify(seances));
-  localStorage.setItem('iqra_factures', JSON.stringify(factures));
-  localStorage.setItem('iqra_users', JSON.stringify(utilisateurs));
+  try {
+    localStorage.setItem('iqra_seances', JSON.stringify(seances));
+    localStorage.setItem('iqra_factures', JSON.stringify(factures));
+    localStorage.setItem('iqra_users', JSON.stringify(utilisateurs));
+  } catch(e) { console.warn('localStorage indisponible, données en mémoire uniquement'); }
 }
 
 // ══════════════════════════════════════════════
