@@ -710,57 +710,99 @@ function saveLocal(){
   localStorage.setItem('iqra_liens_cours', JSON.stringify(liensCours));
   localStorage.setItem('iqra_eleves', JSON.stringify(ELEVES_DB));
   localStorage.setItem('iqra_profs_extra', JSON.stringify(PROFS_EXTRA));
+  // Log horodaté de la dernière sauvegarde
+  localStorage.setItem('iqra_last_save', new Date().toISOString());
 }
 
 function loadLocal(){
-  // Charger les élèves sauvegardés
-  const savedEleves = localStorage.getItem('iqra_eleves');
-  if (savedEleves) {
-    try {
-      const parsed = JSON.parse(savedEleves);
-      ELEVES_DB.length = 0;
-      parsed.forEach(function(e){ ELEVES_DB.push(e); });
-    } catch(e) {}
-  }
-  // Charger les profs supplémentaires
-  const savedProfs = localStorage.getItem('iqra_profs_extra');
-  if (savedProfs) {
-    try {
-      const parsed = JSON.parse(savedProfs);
-      PROFS_EXTRA.length = 0;
-      parsed.forEach(function(p){ PROFS_EXTRA.push(p); });
-    } catch(e) {}
-  }
+  // 1. Élèves
+  try {
+    const saved = localStorage.getItem('iqra_eleves');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        ELEVES_DB.length = 0;
+        parsed.forEach(function(e){ ELEVES_DB.push(e); });
+      }
+    }
+  } catch(e) { console.warn('Erreur chargement élèves:', e); }
+
+  // 2. Profs supplémentaires
+  try {
+    const saved = localStorage.getItem('iqra_profs_extra');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        PROFS_EXTRA.length = 0;
+        parsed.forEach(function(p){ PROFS_EXTRA.push(p); });
+      }
+    }
+  } catch(e) { console.warn('Erreur chargement profs:', e); }
+
+  // 3. Familles sauvegardées manuellement
+  try {
+    const saved = localStorage.getItem('iqra_familles');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        FAMILLES_DB.length = 0;
+        parsed.forEach(function(f){ FAMILLES_DB.push(f); });
+      }
+    }
+  } catch(e) { console.warn('Erreur chargement familles:', e); }
+
+  // 4. Séances
+  try {
+    const saved = localStorage.getItem('iqra_seances');
+    if (saved) seances = JSON.parse(saved) || [];
+  } catch(e) {}
+
+  // 5. Liens cours
+  try {
+    const saved = localStorage.getItem('iqra_liens_cours');
+    if (saved) liensCours = JSON.parse(saved) || {};
+  } catch(e) {}
 }
 
 function buildFamillesFromEleves() {
-  const saved = localStorage.getItem('iqra_familles');
-  if (saved) { FAMILLES_DB = JSON.parse(saved); return; }
-  const map = {};
-  ELEVES_DB.forEach(e => {
+  // Construire un index des familles existantes (par id)
+  const existingIds = new Set(FAMILLES_DB.map(function(f){ return f.id; }));
+  const existingEnfants = {}; // famId -> Set de noms
+  FAMILLES_DB.forEach(function(f){
+    existingEnfants[f.id] = new Set(f.enfants||[]);
+  });
+
+  // Parcourir les élèves pour enrichir ou créer les familles
+  ELEVES_DB.forEach(function(e) {
     const key = e.id || (e.responsable||'').toLowerCase().trim();
     if (!key) return;
-    if (!map[key]) {
-      map[key] = {
-        id: 'F' + key,
+    const famId = 'F' + key;
+
+    if (existingIds.has(famId)) {
+      // Famille existante — juste mettre à jour la liste d'enfants
+      const fam = FAMILLES_DB.find(function(f){ return f.id === famId; });
+      if (fam && e.nom && !existingEnfants[famId].has(e.nom)) {
+        fam.enfants = fam.enfants || [];
+        fam.enfants.push(e.nom);
+        existingEnfants[famId].add(e.nom);
+      }
+    } else if (e.responsable) {
+      // Nouvelle famille à créer
+      const newFam = {
+        id: famId,
         responsable: e.responsable || '',
         email: e.email || '',
         tel: e.tel || '',
         telegram: e.telegram || '',
         pays: e.pays || '',
         notes: '',
-        enfants: []
+        enfants: e.nom ? [e.nom] : []
       };
+      FAMILLES_DB.push(newFam);
+      existingIds.add(famId);
+      existingEnfants[famId] = new Set(newFam.enfants);
     }
-    const fam = map[key];
-    if (!fam.email && e.email) fam.email = e.email;
-    if (!fam.tel && e.tel) fam.tel = e.tel;
-    if (!fam.telegram && e.telegram) fam.telegram = e.telegram;
-    if (!fam.pays && e.pays) fam.pays = e.pays;
-    // ajouter enfant si pas déjà présent
-    if (!fam.enfants.includes(e.nom)) fam.enfants.push(e.nom);
   });
-  FAMILLES_DB = Object.values(map).filter(f => f.responsable);
 }
 
 // ══════════════════════════════════════════════
@@ -1480,10 +1522,11 @@ function saveFamille() {
   } else {
     FAMILLES_DB.push(data);
   }
-  saveLocal();
+  saveLocal(); // persiste immédiatement dans localStorage
   closeModal('mo-famille');
   toast('Famille enregistrée');
   if (curPage==='familles') showPage('familles');
+  if (curPage==='db') showPage('db');
   populateFamilleSelect();
 }
 
