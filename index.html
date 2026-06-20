@@ -6,8 +6,7 @@
 <title>Portail Iqrawartaqi — V6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --navy:#0e232d;--navy2:#162f3d;--gold:#ae8f72;--gold-l:#c4a882;--gold-pale:#f5ede4;
@@ -619,16 +618,50 @@ tr:hover td{background:var(--g50)}
 // ══════════════════════════════════════════════
 // FIREBASE CONFIG — REMPLACER PAR VOS VRAIES VALEURS
 // ══════════════════════════════════════════════
-const FB_CONFIG = {
-  apiKey: "AIzaSyBQGwxDavu2P5Xg2q-PJIUVzGdCV_2vFfM",
-  authDomain: "iqrawartaqi-portail.firebaseapp.com",
-  projectId: "iqrawartaqi-portail",
-  storageBucket: "iqrawartaqi-portail.firebasestorage.app",
-  messagingSenderId: "233822341274",
-  appId: "1:233822341274:web:df04ff19fbddd8e193f723"
-};
-const FB_CONFIGURED = !FB_CONFIG.apiKey.includes('VOTRE');
-if (FB_CONFIGURED) firebase.initializeApp(FB_CONFIG);
+// ══════════════════════════════════════════════
+// SUPABASE — Base de données en ligne
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://ohnuflbluhwdrzyliblh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_Jic_yp9txHiCHkWcxoEoVQ_tSHpg0Hi';
+let sb = null;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) { console.warn('Supabase init failed:', e); }
+const FB_CONFIGURED = false; // Auth via email/mdp simple en mode Supabase
+
+// ── CRUD Supabase ──
+async function sbLoad(table) {
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.from(table).select('*').order('created_at', {ascending: true});
+    if (error) { console.warn('sbLoad', table, error.message); return null; }
+    return data;
+  } catch(e) { console.warn('sbLoad catch:', e); return null; }
+}
+async function sbUpsert(table, rows, conflictCol) {
+  if (!sb) return false;
+  if (!Array.isArray(rows)) rows = [rows];
+  try {
+    const opts = conflictCol ? {onConflict: conflictCol, ignoreDuplicates: false} : {};
+    const { error } = await sb.from(table).upsert(rows, opts);
+    if (error) { console.warn('sbUpsert', table, error.message); return false; }
+    return true;
+  } catch(e) { console.warn('sbUpsert catch:', e); return false; }
+}
+async function sbInsert(table, row) {
+  if (!sb) return false;
+  try {
+    const { error } = await sb.from(table).insert(row);
+    if (error) { console.warn('sbInsert', table, error.message); return false; }
+    return true;
+  } catch(e) { return false; }
+}
+async function sbDelete(table, col, val) {
+  if (!sb) return false;
+  try {
+    const { error } = await sb.from(table).delete().eq(col, val);
+    if (error) { console.warn('sbDelete', table, error.message); return false; }
+    return true;
+  } catch(e) { return false; }
+}
 
 const ELEVES_DB = [];
 const PROFS_DB  = [];
@@ -703,6 +736,197 @@ let liensCours = JSON.parse(localStorage.getItem('iqra_liens_cours')||'{}');
 let curRole = 'eleve';
 let curUser = null;
 let curPage = '';
+
+// ══════════════════════════════════════════════
+// SUPABASE — Chargement & sauvegarde des données
+// ══════════════════════════════════════════════
+
+async function loadFromSupabase() {
+  try {
+    // Élèves
+    const { data: eleves } = await sb.from('eleves').select('*').order('nom');
+    if (eleves && eleves.length) {
+      ELEVES_DB.length = 0;
+      eleves.forEach(function(e){ ELEVES_DB.push(e); });
+    }
+    // Profs
+    const { data: profs } = await sb.from('profs').select('*').order('nom');
+    if (profs && profs.length) {
+      PROFS_EXTRA.length = 0;
+      profs.forEach(function(p){ PROFS_EXTRA.push(p); });
+    }
+    // Familles
+    const { data: familles } = await sb.from('familles').select('*').order('responsable');
+    if (familles && familles.length) {
+      FAMILLES_DB.length = 0;
+      familles.forEach(function(f){
+        f.enfants = f.enfants || [];
+        FAMILLES_DB.push(f);
+      });
+    }
+    // Séances
+    const { data: seanc } = await sb.from('seances').select('*').order('date', {ascending:false});
+    if (seanc) seances = seanc;
+    // Liens cours
+    const { data: liens } = await sb.from('liens_cours').select('*');
+    if (liens) {
+      liensCours = {};
+      liens.forEach(function(l){
+        if (!liensCours[l.prof_email]) liensCours[l.prof_email] = {};
+        liensCours[l.prof_email][l.eleve_nom] = { lien: l.lien, type: l.type };
+      });
+    }
+    console.log('✅ Données chargées depuis Supabase:', ELEVES_DB.length, 'élèves,', PROFS_EXTRA.length, 'profs');
+  } catch(e) {
+    console.error('Erreur chargement Supabase:', e);
+    // Fallback localStorage
+    loadLocal();
+  }
+}
+
+async function sbSaveEleve(data, isEdit, editIdx) {
+  try {
+    if (isEdit && data.id) {
+      await sb.from('eleves').upsert(data, { onConflict: 'id' });
+    } else {
+      data.id = 'E' + Date.now();
+      await sb.from('eleves').insert(data);
+    }
+  } catch(e) { console.error('Erreur save élève:', e); }
+}
+
+async function sbSaveProf(data) {
+  try {
+    await sb.from('profs').upsert(data, { onConflict: 'email' });
+  } catch(e) { console.error('Erreur save prof:', e); }
+}
+
+async function sbSaveFamille(data) {
+  try {
+    await sb.from('familles').upsert(data, { onConflict: 'id' });
+  } catch(e) { console.error('Erreur save famille:', e); }
+}
+
+async function sbSaveSeance(data) {
+  try {
+    await sb.from('seances').insert(data);
+  } catch(e) { console.error('Erreur save séance:', e); }
+}
+
+async function sbSaveLienCours(profEmail, eleveNom, lien, type) {
+  try {
+    await sb.from('liens_cours').upsert(
+      { prof_email: profEmail, eleve_nom: eleveNom, lien, type },
+      { onConflict: 'prof_email,eleve_nom' }
+    );
+  } catch(e) { console.error('Erreur save lien cours:', e); }
+}
+
+// Session Supabase au chargement de la page
+async function checkSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && session.user) {
+    curUser = { email: session.user.email, uid: session.user.id, name: session.user.user_metadata?.full_name||'' };
+    await loadFromSupabase();
+    initApp();
+  }
+}
+
+// ══════════════════════════════════════════════
+// LOADING OVERLAY
+// ══════════════════════════════════════════════
+function showLoadingOverlay(msg) {
+  let el = document.getElementById('loading-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(14,35,45,.85);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-family:Lato,sans-serif';
+    el.innerHTML = '<div style="font-size:32px;margin-bottom:1rem">⏳</div><div id="loading-msg" style="font-size:15px;font-weight:500"></div>';
+    document.body.appendChild(el);
+  }
+  document.getElementById('loading-msg').textContent = msg || 'Chargement...';
+  el.style.display = 'flex';
+}
+function hideLoadingOverlay() {
+  const el = document.getElementById('loading-overlay');
+  if (el) el.style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+// CHARGEMENT DEPUIS SUPABASE
+// ══════════════════════════════════════════════
+async function loadFromSupabase() {
+  if (!sb) { loadLocal(); return; }
+  try {
+    // Élèves
+    showLoadingOverlay('Chargement des élèves...');
+    const eleves = await sbLoad('eleves');
+    if (eleves && eleves.length >= 0) {
+      ELEVES_DB.length = 0;
+      eleves.forEach(function(e) { ELEVES_DB.push(e); });
+    }
+    // Profs
+    showLoadingOverlay('Chargement des enseignants...');
+    const profs = await sbLoad('profs');
+    if (profs && profs.length >= 0) {
+      PROFS_EXTRA.length = 0;
+      profs.forEach(function(p) { PROFS_EXTRA.push(p); });
+    }
+    // Familles
+    showLoadingOverlay('Chargement des familles...');
+    const familles = await sbLoad('familles');
+    if (familles && familles.length >= 0) {
+      FAMILLES_DB.length = 0;
+      familles.forEach(function(f) { FAMILLES_DB.push(f); });
+    }
+    // Séances
+    showLoadingOverlay('Chargement des séances...');
+    const seans = await sbLoad('seances');
+    if (seans && seans.length >= 0) {
+      seances = seans;
+    }
+    // Liens cours
+    const liens = await sbLoad('liens_cours');
+    if (liens) {
+      liens.forEach(function(l) {
+        if (!liensCours[l.prof_email]) liensCours[l.prof_email] = {};
+        liensCours[l.prof_email][l.eleve_nom] = {lien: l.lien, type: l.type};
+      });
+    }
+    console.log('✅ Supabase chargé:', ELEVES_DB.length, 'élèves,', PROFS_EXTRA.length, 'profs');
+  } catch(e) {
+    console.warn('Supabase load failed, fallback localStorage:', e);
+    loadLocal();
+  }
+  hideLoadingOverlay();
+}
+
+// ══════════════════════════════════════════════
+// SAUVEGARDE VERS SUPABASE
+// ══════════════════════════════════════════════
+async function saveEleve_SB(eleve) {
+  if (!sb) return;
+  const row = Object.assign({}, eleve, {
+    tarif_auto: eleve.tarifAuto || calcTarif(eleve.freq, eleve.duree, eleve.type) || null
+  });
+  await sbUpsert('eleves', row, 'id');
+}
+
+async function saveProf_SB(prof) {
+  if (!sb) return;
+  await sbUpsert('profs', prof, 'nom');
+}
+
+async function saveFamille_SB(famille) {
+  if (!sb) return;
+  await sbUpsert('familles', famille, 'id');
+}
+
+async function saveSeance_SB(seance) {
+  if (!sb) return;
+  const row = Object.assign({}, seance, {id: seance.eleve+'_'+seance.date+'_'+(seance.mat||'').replace(/[^a-z]/gi,'')+'_'+Date.now()});
+  await sbInsert('seances', row);
+}
 
 function saveLocal(){
   localStorage.setItem('iqra_seances', JSON.stringify(seances));
@@ -846,32 +1070,19 @@ async function doGoogleLogin() {
   const err = document.getElementById('l-err');
   err.style.display = 'none';
   btn.disabled = true;
-  btn.querySelector('span') && (btn.querySelector('span').textContent = '');
-  btn.lastChild.textContent = ' Connexion...';
-  const GSVG = `<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.33 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.67 14.62 48 24 48z"/></svg> Continuer avec Google`;
-  const resetBtn = () => { btn.disabled = false; btn.innerHTML = GSVG; };
-  if (FB_CONFIGURED) {
-    try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      const cred = await firebase.auth().signInWithPopup(provider);
-      curUser = { email: cred.user.email, uid: cred.user.uid, name: cred.user.displayName };
-      resetBtn();
-      initApp();
-    } catch(e) {
-      resetBtn();
-      if (e.code !== 'auth/popup-closed-by-user') {
-        showErr(err, e.code === 'auth/popup-blocked'
-          ? 'Popup bloqué — autorisez les popups pour ce site dans votre navigateur'
-          : 'Erreur Google : ' + (e.message||e.code));
-      }
-    }
-  } else {
-    setTimeout(() => {
-      curUser = { email: 'demo.google@gmail.com', uid: 'google-demo', name: 'Démo Google' };
-      resetBtn();
-      initApp();
-    }, 500);
+  btn.innerHTML = '<span>⏳</span> Connexion Google...';
+  const GSVG = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.33 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.67 14.62 48 24 48z"/></svg> Continuer avec Google';
+  const resetBtn = function() { btn.disabled = false; btn.innerHTML = GSVG; };
+  try {
+    const { data, error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.href }
+    });
+    if (error) throw error;
+    // La redirection se fait automatiquement
+  } catch(e) {
+    resetBtn();
+    showErr(err, 'Erreur Google : ' + (e.message||e));
   }
 }
 
@@ -902,37 +1113,36 @@ async function doLogin() {
     setTimeout(() => {
       curUser = { email, uid: 'demo-' + Date.now() };
       btn.disabled = false; btn.textContent = 'Se connecter';
-      initApp();
+      await initApp();
     }, 400);
   }
 }
 
 async function doReset() {
   const email = document.getElementById('r-email').value.trim();
-  const btn = document.getElementById('r-btn');
-  const err = document.getElementById('r-err');
-  const ok = document.getElementById('r-ok');
+  const btn   = document.getElementById('r-btn');
+  const err   = document.getElementById('r-err');
+  const ok    = document.getElementById('r-ok');
   err.style.display = 'none'; ok.style.display = 'none';
   if (!email) { showErr(err,'Entrez votre email'); return; }
   btn.disabled = true; btn.textContent = 'Envoi...';
-  if (FB_CONFIGURED) {
-    try {
-      await firebase.auth().sendPasswordResetEmail(email);
-      ok.textContent = '✅ Email envoyé ! Vérifiez votre boîte mail.';
-      ok.style.display = 'block';
-    } catch(e) {
-      showErr(err, e.code === 'auth/user-not-found' ? 'Email non reconnu' : 'Erreur : ' + e.message);
-    }
-  } else {
-    ok.textContent = '✅ Email de réinitialisation envoyé (mode démo).';
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.href
+    });
+    if (error) throw error;
+    ok.textContent = '✅ Email envoyé ! Vérifiez votre boîte mail.';
     ok.style.display = 'block';
+  } catch(e) {
+    showErr(err, 'Erreur : ' + (e.message||e));
   }
   btn.disabled = false; btn.textContent = 'Envoyer le lien';
 }
 
 async function doLogout() {
-  if (FB_CONFIGURED) await firebase.auth().signOut();
+  await sb.auth.signOut();
   curUser = null;
+  ELEVES_DB.length = 0; PROFS_EXTRA.length = 0; FAMILLES_DB.length = 0; seances = [];
   document.getElementById('app').style.display = 'none';
   document.getElementById('auth').style.display = 'flex';
 }
@@ -979,8 +1189,16 @@ function initApp() {
   buildFamillesFromEleves();
   document.getElementById('auth').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  if (!FB_CONFIGURED) document.getElementById('demo-banner').style.display = 'block';
-  if (curRole === 'enseignant' && curUser) curUser.profName = resolveProfName(curUser.email);
+  // Supabase toujours actif — pas de mode démo
+  if (curRole === 'enseignant' && curUser) {
+    curUser.profName = resolveProfName(curUser.email);
+    // Debug visible — à retirer après tests
+    if (!curUser.profName) {
+      console.warn('⚠️ Aucun prof trouvé pour:', curUser.email, '— PROFS_EXTRA:', JSON.stringify(PROFS_EXTRA));
+    } else {
+      console.log('✅ Prof identifié:', curUser.profName);
+    }
+  }
   setupSidebar();
   populateRapportSelect();
   populateProfSelect();
@@ -990,16 +1208,11 @@ function initApp() {
 function resolveProfName(email) {
   if (!email) return null;
   const emailLower = email.toLowerCase().trim();
-  // 1. Correspondance exacte par email dans PROFS_EXTRA
-  const byEmail = PROFS_EXTRA.find(function(p){ return p.email && p.email.toLowerCase().trim() === emailLower; });
-  if (byEmail) return byEmail.nom;
-  // 2. Correspondance floue par nom dans partie locale de l'email
-  const local = emailLower.split('@')[0].replace(/[^a-z]/g,'');
-  const allProfs = [...PROFS_DB, ...PROFS_EXTRA.map(function(p){ return p.nom; })];
-  return allProfs.find(function(p) {
-    const norm = p.toLowerCase().replace(/[^a-z]/g,'');
-    return local.length > 3 && norm.length > 3 && (local.includes(norm) || norm.includes(local));
-  }) || null;
+  // Correspondance UNIQUEMENT par email exact dans PROFS_EXTRA
+  const found = PROFS_EXTRA.find(function(p){
+    return p.email && p.email.toLowerCase().trim() === emailLower;
+  });
+  return found ? found.nom : null;
 }
 
 // ══════════════════════════════════════════════
@@ -1137,6 +1350,7 @@ function setCoursLien(profEmail, eleveNom, lien, type) {
   if (!liensCours[profEmail]) liensCours[profEmail] = {};
   liensCours[profEmail][eleveNom] = { lien, type };
   saveLocal();
+  sbSaveLienCours(profEmail, eleveNom, lien, type);
 }
 function coursBtn(profEmail, eleveNom, compact) {
   const entry = getCoursLien(profEmail, eleveNom);
@@ -1522,7 +1736,8 @@ function saveFamille() {
   } else {
     FAMILLES_DB.push(data);
   }
-  saveLocal(); // persiste immédiatement dans localStorage
+  saveLocal();
+  sbSaveFamille(data);
   closeModal('mo-famille');
   toast('Famille enregistrée');
   if (curPage==='familles') showPage('familles');
@@ -1750,15 +1965,16 @@ function saveEleve() {
   };
   if (idx !== '') {
     Object.assign(ELEVES_DB[parseInt(idx)], data);
-    toast('Élève modifié : ' + data.nom);
   } else {
+    data.id = 'E' + Date.now();
     ELEVES_DB.push(data);
-    const famId = data.id;
-    const fam = FAMILLES_DB.find(f=>f.id==='F'+famId);
-    if (fam && !fam.enfants.includes(data.nom)) fam.enfants.push(data.nom);
-    toast('Élève ajouté : ' + data.nom);
+    const fam = FAMILLES_DB.find(function(f){ return f.id==='F'+(data.responsable||'').toLowerCase().trim(); });
+    if (fam && data.nom && !fam.enfants.includes(data.nom)) fam.enfants.push(data.nom);
   }
   saveLocal();
+  sbSaveEleve(data, idx!=='', idx!=='' ? parseInt(idx) : null).then(function(){
+    toast(idx!=='' ? 'Élève modifié : '+data.nom : 'Élève ajouté : '+data.nom);
+  });
   closeModal('mo-eleve');
   populateRapportSelect();
   if (curPage==='gest-eleves') showPage('gest-eleves');
@@ -1831,6 +2047,7 @@ function saveProf() {
     }
   }
   saveLocal();
+  sbSaveProf({nom:fullName, email:document.getElementById('np-email').value.trim(), telegram:document.getElementById('np-tg').value.trim(), programmes:document.getElementById('np-prog').value, statut:document.getElementById('np-statut').value});
   closeModal('mo-prof');
   toast('Enseignant enregistré');
   populateProfSelect();
@@ -1920,7 +2137,18 @@ function pgSeances() {
 // ══════════════════════════════════════════════
 function pgMesEleves() {
   const mesE = ELEVES_DB.filter(e=>e.prof===curUser?.profName);
-  if (!mesE.length) return `<div class="card"><div class="cb" style="text-align:center;padding:2rem;color:var(--g400)">Aucun élève trouvé pour ce compte. Vérifiez votre email avec l'administration.</div></div>`;
+  if (!curUser?.profName) return `<div class="card"><div class="cb" style="text-align:center;padding:2rem">
+    <div style="font-size:32px;margin-bottom:1rem">⚠️</div>
+    <div style="font-weight:600;color:var(--navy);margin-bottom:.5rem">Email non reconnu comme enseignant</div>
+    <div style="font-size:13px;color:var(--g600)">Email connecté : <strong>${curUser?.email}</strong></div>
+    <div style="font-size:13px;color:var(--g600);margin-top:.5rem">Vérifiez que cet email est bien saisi dans la fiche enseignant côté admin.</div>
+    <div style="font-size:12px;color:var(--g400);margin-top:1rem">Enseignants en base : ${PROFS_EXTRA.map(p=>p.nom+' ('+p.email+')').join(' — ')||'aucun'}</div>
+  </div></div>`;
+  if (!mesE.length) return `<div class="card"><div class="cb" style="text-align:center;padding:2rem;color:var(--g400)">
+    <div style="font-size:32px;margin-bottom:1rem">📭</div>
+    Aucun élève assigné à <strong>${curUser?.profName}</strong>.<br>
+    <span style="font-size:12px">Vérifiez que le nom du prof dans les fiches élèves correspond exactement.</span>
+  </div></div>`;
   return `<div class="card">
     <div class="ch"><h3>Mes élèves — ${mesE.length}</h3>
       <button class="btn btn-gold btn-sm" onclick="openModal('mo-rapport');document.getElementById('rp-date').value=new Date().toISOString().slice(0,10)">📝 Nouveau rapport</button>
@@ -2370,8 +2598,10 @@ function saveRapport() {
   const note  = document.getElementById('rp-note')?.value||'';
   const pres  = document.querySelector('#mo-rapport .niv-btn.sel')?.textContent?.trim()||'Présent(e)';
   if (!eleve) { toast('Sélectionnez un élève','err'); return; }
-  seances.push({eleve,date,mat,dur,cnt,obs,devoir,note,pres,prof:curUser?.email});
+  const sr = {eleve,date,mat,dur,cnt,obs,devoir,note,pres,prof:curUser?.email};
+  seances.push(sr);
   saveLocal();
+  sbSaveSeance(sr);
   closeModal('mo-rapport');
   toast('Rapport enregistré pour ' + eleve);
   if (['seances','absences','mes-absences','mes-rapports','db'].includes(curPage)) showPage(curPage);
@@ -2523,9 +2753,19 @@ function populateFamilleSelect(val) {
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async function() {
   const today = new Date().toISOString().slice(0,10);
-  document.querySelectorAll('input[type="date"]').forEach(d => { if(!d.value) d.value = today; });
+  document.querySelectorAll('input[type="date"]').forEach(function(d){ if(!d.value) d.value = today; });
+  // Vérifier si session Supabase active (reconnexion automatique)
+  await checkSession();
+  // Listener pour OAuth redirect (Google)
+  sb.auth.onAuthStateChange(async function(event, session) {
+    if (event === 'SIGNED_IN' && session && !curUser) {
+      curUser = { email: session.user.email, uid: session.user.id, name: session.user.user_metadata?.full_name||'' };
+      await loadFromSupabase();
+      initApp();
+    }
+  });
 });
 </script>
 </body>
