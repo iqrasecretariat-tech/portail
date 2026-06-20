@@ -708,6 +708,29 @@ function saveLocal(){
   localStorage.setItem('iqra_seances', JSON.stringify(seances));
   localStorage.setItem('iqra_familles', JSON.stringify(FAMILLES_DB));
   localStorage.setItem('iqra_liens_cours', JSON.stringify(liensCours));
+  localStorage.setItem('iqra_eleves', JSON.stringify(ELEVES_DB));
+  localStorage.setItem('iqra_profs_extra', JSON.stringify(PROFS_EXTRA));
+}
+
+function loadLocal(){
+  // Charger les élèves sauvegardés
+  const savedEleves = localStorage.getItem('iqra_eleves');
+  if (savedEleves) {
+    try {
+      const parsed = JSON.parse(savedEleves);
+      ELEVES_DB.length = 0;
+      parsed.forEach(function(e){ ELEVES_DB.push(e); });
+    } catch(e) {}
+  }
+  // Charger les profs supplémentaires
+  const savedProfs = localStorage.getItem('iqra_profs_extra');
+  if (savedProfs) {
+    try {
+      const parsed = JSON.parse(savedProfs);
+      PROFS_EXTRA.length = 0;
+      parsed.forEach(function(p){ PROFS_EXTRA.push(p); });
+    } catch(e) {}
+  }
 }
 
 function buildFamillesFromEleves() {
@@ -924,11 +947,16 @@ function initApp() {
 
 function resolveProfName(email) {
   if (!email) return null;
-  const local = email.split('@')[0].toLowerCase();
-  const allProfs = [...PROFS_DB, ...PROFS_EXTRA.map(p => p.nom)];
-  return allProfs.find(p => {
+  const emailLower = email.toLowerCase().trim();
+  // 1. Correspondance exacte par email dans PROFS_EXTRA
+  const byEmail = PROFS_EXTRA.find(function(p){ return p.email && p.email.toLowerCase().trim() === emailLower; });
+  if (byEmail) return byEmail.nom;
+  // 2. Correspondance floue par nom dans partie locale de l'email
+  const local = emailLower.split('@')[0].replace(/[^a-z]/g,'');
+  const allProfs = [...PROFS_DB, ...PROFS_EXTRA.map(function(p){ return p.nom; })];
+  return allProfs.find(function(p) {
     const norm = p.toLowerCase().replace(/[^a-z]/g,'');
-    return local.replace(/[^a-z]/g,'').includes(norm) || norm.includes(local.replace(/[^a-z]/g,''));
+    return local.length > 3 && norm.length > 3 && (local.includes(norm) || norm.includes(local));
   }) || null;
 }
 
@@ -1682,7 +1710,6 @@ function saveEleve() {
     toast('Élève modifié : ' + data.nom);
   } else {
     ELEVES_DB.push(data);
-    // Ajouter à la famille si sélectionnée
     const famId = data.id;
     const fam = FAMILLES_DB.find(f=>f.id==='F'+famId);
     if (fam && !fam.enfants.includes(data.nom)) fam.enfants.push(data.nom);
@@ -1690,7 +1717,9 @@ function saveEleve() {
   }
   saveLocal();
   closeModal('mo-eleve');
+  populateRapportSelect();
   if (curPage==='gest-eleves') showPage('gest-eleves');
+  if (curPage==='db') showPage('db');
 }
 
 // ══════════════════════════════════════════════
@@ -1758,10 +1787,12 @@ function saveProf() {
       PROFS_EXTRA.push({nom:fullName, email:document.getElementById('np-email').value, telegram:document.getElementById('np-tg').value, programmes:document.getElementById('np-prog').value, statut:document.getElementById('np-statut').value});
     }
   }
+  saveLocal();
   closeModal('mo-prof');
   toast('Enseignant enregistré');
   populateProfSelect();
   if (curPage==='gest-profs') showPage('gest-profs');
+  if (curPage==='db') showPage('db');
 }
 
 // ══════════════════════════════════════════════
