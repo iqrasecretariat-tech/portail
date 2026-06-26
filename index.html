@@ -622,7 +622,7 @@ tr:hover td{background:var(--g50)}
 // SUPABASE — Base de données en ligne
 // ══════════════════════════════════════════════
 const SUPABASE_URL = 'https://ohnuflbluhwdrzyliblh.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_Jic_yp9txHiCHkWcxoEoVQ_tSHpg0Hi';
+const SUPABASE_KEY = 'sb_secret_doXnmPSgtz7rxN5HJEU-6A_EtYSNKEo';
 let sb = null;
 try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) { console.warn('Supabase init failed:', e); }
 const FB_CONFIGURED = false; // Auth via email/mdp simple en mode Supabase
@@ -732,67 +732,78 @@ let FAMILLES_DB = [];
 let PROFS_EXTRA = []; // enseignants ajoutés manuellement
 let seances = JSON.parse(localStorage.getItem('iqra_seances')||'[]');
 let liensCours = JSON.parse(localStorage.getItem('iqra_liens_cours')||'{}');
-// importBuffer already declared above
+let importBuffer = [];
 let curRole = 'eleve';
 let curUser = null;
 let curPage = '';
+
+// ── Sauvegarde locale (cache rapide) ──
+function saveLocal() {
+  try {
+    localStorage.setItem('iqra_seances', JSON.stringify(seances.slice(-500)));
+    localStorage.setItem('iqra_liens_cours', JSON.stringify(liensCours));
+    localStorage.setItem('iqra_eleves_cache', JSON.stringify(ELEVES_DB.slice(0,500)));
+    localStorage.setItem('iqra_profs_cache', JSON.stringify(PROFS_EXTRA));
+    localStorage.setItem('iqra_familles_cache', JSON.stringify(FAMILLES_DB.slice(0,500)));
+  } catch(e) { console.warn('saveLocal:', e); }
+}
+
+// ── Chargement depuis localStorage (fallback hors-ligne) ──
+function loadLocal() {
+  try {
+    const el = localStorage.getItem('iqra_eleves_cache');
+    if (el) { ELEVES_DB.length=0; JSON.parse(el).forEach(function(e){ELEVES_DB.push(e);}); }
+    const pr = localStorage.getItem('iqra_profs_cache');
+    if (pr) { PROFS_EXTRA.length=0; JSON.parse(pr).forEach(function(p){PROFS_EXTRA.push(p);}); }
+    const fa = localStorage.getItem('iqra_familles_cache');
+    if (fa) { FAMILLES_DB.length=0; JSON.parse(fa).forEach(function(f){FAMILLES_DB.push(f);}); }
+    const se = localStorage.getItem('iqra_seances');
+    if (se) seances = JSON.parse(se);
+    const lc = localStorage.getItem('iqra_liens_cours');
+    if (lc) liensCours = JSON.parse(lc);
+    console.warn('⚠️ Mode hors-ligne — données depuis cache localStorage');
+  } catch(e) { console.warn('loadLocal:', e); }
+}
+
+// ── Construire FAMILLES_DB depuis ELEVES_DB (si pas encore en base) ──
+function buildFamillesFromEleves() {
+  // Ne rien écraser si les familles ont déjà été chargées depuis Supabase
+  if (FAMILLES_DB.length > 0) return;
+  const famMap = {};
+  ELEVES_DB.forEach(function(e) {
+    const key = e.id || ('E_'+(e.responsable||e.nom||'').toLowerCase().trim());
+    if (!famMap[key]) {
+      famMap[key] = {
+        id: 'F_'+key,
+        responsable: e.responsable || e.nom || '—',
+        email: e.email || '',
+        tel: e.tel || '',
+        telegram: e.telegram || '',
+        pays: e.pays || '',
+        notes: '',
+        enfants: []
+      };
+    }
+    if (e.nom && !famMap[key].enfants.includes(e.nom)) {
+      famMap[key].enfants.push(e.nom);
+    }
+  });
+  Object.values(famMap).forEach(function(f){ FAMILLES_DB.push(f); });
+}
 
 // ══════════════════════════════════════════════
 // SUPABASE — Chargement & sauvegarde des données
 // ══════════════════════════════════════════════
 
-async function loadFromSupabase() {
-  try {
-    // Élèves
-    const { data: eleves } = await sb.from('eleves').select('*').order('nom');
-    if (eleves && eleves.length) {
-      ELEVES_DB.length = 0;
-      eleves.forEach(function(e){ ELEVES_DB.push(e); });
-    }
-    // Profs
-    const { data: profs } = await sb.from('profs').select('*').order('nom');
-    if (profs && profs.length) {
-      PROFS_EXTRA.length = 0;
-      profs.forEach(function(p){ PROFS_EXTRA.push(p); });
-    }
-    // Familles
-    const { data: familles } = await sb.from('familles').select('*').order('responsable');
-    if (familles && familles.length) {
-      FAMILLES_DB.length = 0;
-      familles.forEach(function(f){
-        f.enfants = f.enfants || [];
-        FAMILLES_DB.push(f);
-      });
-    }
-    // Séances
-    const { data: seanc } = await sb.from('seances').select('*').order('date', {ascending:false});
-    if (seanc) seances = seanc;
-    // Liens cours
-    const { data: liens } = await sb.from('liens_cours').select('*');
-    if (liens) {
-      liensCours = {};
-      liens.forEach(function(l){
-        if (!liensCours[l.prof_email]) liensCours[l.prof_email] = {};
-        liensCours[l.prof_email][l.eleve_nom] = { lien: l.lien, type: l.type };
-      });
-    }
-    console.log('✅ Données chargées depuis Supabase:', ELEVES_DB.length, 'élèves,', PROFS_EXTRA.length, 'profs');
-  } catch(e) {
-    console.error('Erreur chargement Supabase:', e);
-    // Fallback localStorage
-    loadLocal();
-  }
-}
-
 async function sbSaveEleve(data) {
   if (!sb) { console.warn('Supabase non disponible'); return; }
   try {
-    // Toujours upsert — jamais de doublon
     const row = Object.assign({}, data);
-    delete row.tarifAuto; // colonne pas dans Supabase
+    delete row.tarifAuto; // pas de colonne tarifAuto dans Supabase
     const { error } = await sb.from('eleves').upsert(row, { onConflict: 'id' });
     if (error) {
       console.error('sbSaveEleve error:', error.message, '| data.id:', row.id);
+      toast('Erreur sauvegarde élève : ' + error.message, 'err');
     } else {
       console.log('✅ Élève sauvegardé Supabase:', row.nom, '| id:', row.id);
     }
@@ -814,8 +825,11 @@ async function sbSaveProf(data) {
 async function sbSaveFamille(data) {
   if (!sb) return;
   try {
-    // Convertir enfants en JSON si c'est un array
-    const row = Object.assign({}, data, { enfants: JSON.stringify(data.enfants||[]) });
+    // Supabase stocke enfants en JSONB — pas besoin de JSON.stringify
+    const row = Object.assign({}, data);
+    if (Array.isArray(row.enfants)) {
+      // laisser en array, Supabase accepte les arrays JS en JSONB
+    }
     const { error } = await sb.from('familles').upsert(row, { onConflict: 'id' });
     if (error) console.error('sbSaveFamille error:', error.message);
     else console.log('✅ Famille sauvegardée Supabase:', data.responsable);
@@ -823,8 +837,12 @@ async function sbSaveFamille(data) {
 }
 
 async function sbSaveSeance(data) {
+  if (!sb) return;
   try {
-    await sb.from('seances').insert(data);
+    const row = Object.assign({id: 'S'+Date.now()}, data);
+    const { error } = await sb.from('seances').insert(row);
+    if (error) console.error('sbSaveSeance error:', error.message);
+    else console.log('✅ Séance sauvegardée Supabase');
   } catch(e) { console.error('Erreur save séance:', e); }
 }
 
@@ -1047,15 +1065,13 @@ function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
 const ADMIN_EMAIL = 'iqra.secretariat@gmail.com';
 
-function initApp() {
+async function initApp() {
   const email = curUser?.email || '';
 
-  // ── SÉCURITÉ ADMIN — seul iqra.secretariat@gmail.com ──
-  // Si l'email est l'admin → forcer rôle admin quoi qu'il arrive
+  // ── SÉCURITÉ ADMIN ──
   if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
     curRole = 'admin';
   } else if (curRole === 'admin') {
-    // Quelqu'un essaie d'accéder admin avec un autre email → bloquer
     localStorage.removeItem('iqra_session');
     curUser = null;
     document.getElementById('auth').style.display = 'flex';
@@ -1065,28 +1081,20 @@ function initApp() {
     return;
   }
 
-  // ── Auto-détection rôle (admin déjà géré ci-dessus) ──
-  if (curRole !== 'admin') {
-    {
-      // Détecter si prof ou élève selon l'email
-      const isProfEmail = PROFS_EXTRA.some(p => p.email && p.email.toLowerCase() === email.toLowerCase())
-        || [...PROFS_DB].some(p => {
-          const norm = p.toLowerCase().replace(/[^a-z]/g,'');
-          const loc  = email.split('@')[0].toLowerCase().replace(/[^a-z]/g,'');
-          return loc.length > 3 && (norm.includes(loc) || loc.includes(norm));
-        });
-      const isEleveEmail = ELEVES_DB.some(e => e.email && e.email.toLowerCase() === email.toLowerCase());
-      if (isProfEmail && curRole === 'enseignant') curRole = 'enseignant';
-      else if (isEleveEmail && curRole === 'eleve') curRole = 'eleve';
-      // sinon on garde le rôle choisi par l'utilisateur
-    }
+  // ── Charger toutes les données depuis Supabase ──
+  await loadFromSupabase();
+
+  // ── Auto-détection rôle enseignant / résolution profName ──
+  if (curRole === 'enseignant') {
+    const found = PROFS_EXTRA.find(function(p){ return p.email && p.email.toLowerCase().trim() === email.toLowerCase().trim(); });
+    curUser.profName = found ? found.nom : null;
   }
 
+  // ── Construire familles depuis élèves si la table familles est vide ──
   buildFamillesFromEleves();
+
   document.getElementById('auth').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  // Supabase toujours actif — pas de mode démo
-  // profName déjà résolu ci-dessus
   setupSidebar();
   populateRapportSelect();
   populateProfSelect();
@@ -1854,13 +1862,17 @@ function saveEleve() {
   if (idx !== '') {
     Object.assign(ELEVES_DB[parseInt(idx)], data);
   } else {
-    data.id = 'E' + Date.now(); // ID unique avant tout
+    data.id = 'E' + Date.now();
     ELEVES_DB.push(data);
-    const fam = FAMILLES_DB.find(function(f){ return f.id==='F'+(data.responsable||'').toLowerCase().trim(); });
+    // Mettre à jour la famille si elle existe
+    const fam = FAMILLES_DB.find(function(f){ return f.id === ('F_E'+(data.responsable||'').toLowerCase().trim()); });
     if (fam && data.nom && !fam.enfants.includes(data.nom)) fam.enfants.push(data.nom);
   }
+  // Nettoyer les champs non-Supabase avant sauvegarde
+  const dataForDb = Object.assign({}, data);
+  delete dataForDb.tarifAuto;
   saveLocal();
-  sbSaveEleve(data).then(function(){
+  sbSaveEleve(dataForDb).then(function(){
     toast(idx!=='' ? 'Élève modifié : '+data.nom : 'Élève ajouté : '+data.nom);
   });
   closeModal('mo-eleve');
@@ -2520,8 +2532,10 @@ function saveRapportCours() {
   const lienCours = document.getElementById('rpc-lien-cours')?.value?.trim()||'';
   const lienType  = document.getElementById('rpc-lien-type')?.value||'zoom';
   if (lienCours && lienCours.startsWith('http')) setCoursLien(curUser?.email||'', eleve, lienCours, lienType);
-  seances.push({eleve,date,mat,dur,cnt,obs,devoir,note,pres,prof:curUser?.email});
+  const sr = {eleve,date,mat,dur,cnt,obs,devoir,note,pres,prof:curUser?.email};
+  seances.push(sr);
   saveLocal();
+  sbSaveSeance(sr);
   toast('Rapport enregistré pour ' + eleve);
   showPage('rapport-cours');
 }
@@ -2529,7 +2543,7 @@ function saveRapportCours() {
 // ══════════════════════════════════════════════
 // CSV
 // ══════════════════════════════════════════════
-// importBuffer already declared above
+// ── CSV IMPORT ──
 function handleCSV(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2558,9 +2572,10 @@ function handleCSV(input) {
 function confirmImport() { doImport(); closeModal('mo-import'); }
 function confirmImport2() { doImport(); if(curPage==='import') showPage('import'); }
 function doImport() {
+  const newEleves = [];
   importBuffer.forEach(row=>{
-    ELEVES_DB.push({
-      id:row['Numéro']||row['id']||'',
+    const e = {
+      id:row['Numéro']||row['id']||'E'+Date.now()+Math.random().toString(36).slice(2,6),
       nom:((row['Prénom']||'').trim()+' '+(row['Nom']||row['NOM']||'').trim()).trim(),
       email:row['Email']||'', tel:row['Téléphone formaté']||row['tel']||'',
       telegram:row['Identifiant Telegram']||row['telegram']||'',
@@ -2569,11 +2584,21 @@ function doImport() {
       duree:row['Durée']||row['duree']||'', freq:row['Fqce']||row['freq']||'',
       tarif:row['Tarif']||'', lien:row['Lien']||'',
       statut:'actif', responsable:'', commentaire:''
-    });
+    };
+    ELEVES_DB.push(e);
+    newEleves.push(e);
   });
+  // Sauvegarder dans Supabase
+  if (sb && newEleves.length) {
+    sb.from('eleves').upsert(newEleves, {onConflict:'id'}).then(function(r){
+      if (r.error) console.error('Import Supabase error:', r.error.message);
+      else console.log('✅ Import Supabase:', newEleves.length, 'élèves');
+    });
+  }
   buildFamillesFromEleves();
+  saveLocal();
   importBuffer = [];
-  toast(`${ELEVES_DB.length} élèves dans la base`);
+  toast(ELEVES_DB.length + ' élèves dans la base');
   if (curPage==='gest-eleves') showPage('gest-eleves');
 }
 
