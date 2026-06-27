@@ -616,28 +616,71 @@ tr:hover td{background:var(--g50)}
 
 <script>
 // ══════════════════════════════════════════════
-// FIREBASE CONFIG — REMPLACER PAR VOS VRAIES VALEURS
+// CONFIGURATION — IQRAWARTAQI V7 (corrigé)
 // ══════════════════════════════════════════════
-// ══════════════════════════════════════════════
-// SUPABASE — Base de données en ligne
-// ══════════════════════════════════════════════
+
+// ⚠️ REMPLACE LA VALEUR CI-DESSOUS par ta vraie clé "anon" Supabase
+// Supabase Dashboard → Settings → API → "anon public"
+// La clé commence toujours par "eyJ..."
 const SUPABASE_URL = 'https://ohnuflbluhwdrzyliblh.supabase.co';
-const SUPABASE_KEY = 'sb_secret_doXnmPSgtz7rxN5HJEU-6A_EtYSNKEo';
+const SUPABASE_KEY = 'sb_publishable_Jic_yp9txHiCHkWcxoEoVQ_tSHpg0Hi';
+
+// ⚠️ Email admin — doit correspondre exactement à l'email dans la table users
+const ADMIN_EMAIL = 'iqra.secretariat@gmail.com';
+
+function sbKeyValid(k) {
+  return k && (k.startsWith('eyJ') || k.startsWith('sb_publishable_') || k.startsWith('sb_secret_pub'));
+}
+
 let sb = null;
-try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e) { console.warn('Supabase init failed:', e); }
-const FB_CONFIGURED = false; // Auth via email/mdp simple en mode Supabase
+try {
+  if (sbKeyValid(SUPABASE_KEY)) {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('✅ Supabase initialisé');
+  } else {
+    console.error('❌ SUPABASE_KEY invalide — remplace par ta Publishable key depuis le dashboard Supabase (Settings → API)');
+  }
+} catch(e) { console.warn('Supabase init failed:', e); }
+
+// ── Hachage SHA-256 du mot de passe (sécurité) ──
+async function hashPassword(pw) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  } catch(e) {
+    // Fallback si crypto.subtle indisponible (HTTP non-sécurisé)
+    console.warn('crypto.subtle indisponible — comparaison texte brut (utilise HTTPS)');
+    return pw;
+  }
+}
+
+const FB_CONFIGURED = false;
 
 // ── CRUD Supabase ──
+function sbKeyWarning() {
+  if (!sbKeyValid(SUPABASE_KEY)) {
+    console.error('❌ SUPABASE_KEY non configurée. Va dans Settings → API et copie la "Publishable key"');
+    return true;
+  }
+  return false;
+}
 async function sbLoad(table) {
-  if (!sb) return null;
+  if (!sb || sbKeyWarning()) return null;
   try {
     const { data, error } = await sb.from(table).select('*').order('created_at', {ascending: true});
-    if (error) { console.warn('sbLoad', table, error.message); return null; }
-    return data;
+    if (error) {
+      if (error.message?.includes('401') || error.message?.includes('Invalid API key')) {
+        console.error('❌ Clé Supabase invalide — remplace SUPABASE_KEY par la clé anon JWT');
+      } else {
+        console.warn('sbLoad', table, error.message);
+      }
+      return null;
+    }
+    return data || [];
   } catch(e) { console.warn('sbLoad catch:', e); return null; }
 }
 async function sbUpsert(table, rows, conflictCol) {
-  if (!sb) return false;
+  if (!sb || sbKeyWarning()) return false;
   if (!Array.isArray(rows)) rows = [rows];
   try {
     const opts = conflictCol ? {onConflict: conflictCol, ignoreDuplicates: false} : {};
@@ -647,7 +690,7 @@ async function sbUpsert(table, rows, conflictCol) {
   } catch(e) { console.warn('sbUpsert catch:', e); return false; }
 }
 async function sbInsert(table, row) {
-  if (!sb) return false;
+  if (!sb || sbKeyWarning()) return false;
   try {
     const { error } = await sb.from(table).insert(row);
     if (error) { console.warn('sbInsert', table, error.message); return false; }
@@ -655,7 +698,7 @@ async function sbInsert(table, row) {
   } catch(e) { return false; }
 }
 async function sbDelete(table, col, val) {
-  if (!sb) return false;
+  if (!sb || sbKeyWarning()) return false;
   try {
     const { error } = await sb.from(table).delete().eq(col, val);
     if (error) { console.warn('sbDelete', table, error.message); return false; }
@@ -897,33 +940,37 @@ function hideLoadingOverlay() {
 // CHARGEMENT DEPUIS SUPABASE
 // ══════════════════════════════════════════════
 async function loadFromSupabase() {
-  if (!sb) { loadLocal(); return; }
+  if (!sb || !sbKeyValid(SUPABASE_KEY)) {
+    console.warn('⚠️ Supabase non configuré — mode hors-ligne localStorage');
+    loadLocal();
+    return;
+  }
   try {
     // Élèves
     showLoadingOverlay('Chargement des élèves...');
     const eleves = await sbLoad('eleves');
-    if (eleves && eleves.length >= 0) {
+    if (eleves !== null) {
       ELEVES_DB.length = 0;
       eleves.forEach(function(e) { ELEVES_DB.push(e); });
     }
     // Profs
     showLoadingOverlay('Chargement des enseignants...');
     const profs = await sbLoad('profs');
-    if (profs && profs.length >= 0) {
+    if (profs !== null) {
       PROFS_EXTRA.length = 0;
       profs.forEach(function(p) { PROFS_EXTRA.push(p); });
     }
     // Familles
     showLoadingOverlay('Chargement des familles...');
     const familles = await sbLoad('familles');
-    if (familles && familles.length >= 0) {
+    if (familles !== null) {
       FAMILLES_DB.length = 0;
       familles.forEach(function(f) { FAMILLES_DB.push(f); });
     }
     // Séances
     showLoadingOverlay('Chargement des séances...');
     const seans = await sbLoad('seances');
-    if (seans && seans.length >= 0) {
+    if (seans !== null) {
       seances = seans;
     }
     // Liens cours
@@ -994,25 +1041,47 @@ async function doLogin() {
   const err   = document.getElementById('l-err');
   err.style.display = 'none';
   if (!email || !pw) { showErr(err, 'Veuillez remplir tous les champs'); return; }
+
+  // Vérification clé Supabase configurée
+  if (!sb) {
+    showErr(err, '⚠️ Base de données non configurée. Remplace SUPABASE_KEY dans le code par ta clé anon JWT (commence par eyJ...).');
+    return;
+  }
+
   btn.disabled = true; btn.textContent = 'Vérification...';
   try {
-    // 1. Vérifier les identifiants dans la table users de Supabase
-    let role = null;
-    let userName = '';
-    if (!sb) throw new Error('Connexion à la base de données impossible');
+    // Hacher le mot de passe avant comparaison
+    const pwHash = await hashPassword(pw);
 
-    const { data: users, error: userErr } = await sb
+    // 1. Chercher par email d'abord (plus souple)
+    const { data: usersRaw, error: userErr } = await sb
       .from('users')
       .select('*')
       .eq('email', email)
-      .eq('password', pw)
       .limit(1);
 
-    if (userErr) throw userErr;
+    if (userErr) {
+      // Erreur 401 = clé Supabase invalide
+      if (userErr.code === '401' || userErr.message?.includes('401') || userErr.message?.includes('Invalid API key')) {
+        throw new Error('Clé Supabase invalide — remplace SUPABASE_KEY par ta clé anon JWT depuis le dashboard Supabase (Settings → API)');
+      }
+      throw userErr;
+    }
 
-    if (users && users.length > 0) {
-      role = users[0].role;
-      userName = users[0].nom || '';
+    let role = null;
+    let userName = '';
+
+    if (usersRaw && usersRaw.length > 0) {
+      const user = usersRaw[0];
+      // Accepter mot de passe haché OU en clair (pour compatibilité avec l'INSERT SQL existant)
+      const pwOk = user.password === pwHash || user.password === pw;
+      if (!pwOk) {
+        btn.disabled = false; btn.textContent = 'Se connecter';
+        showErr(err, 'Email ou mot de passe incorrect');
+        return;
+      }
+      role = user.role;
+      userName = user.nom || '';
     } else {
       btn.disabled = false; btn.textContent = 'Se connecter';
       showErr(err, 'Email ou mot de passe incorrect');
@@ -1046,7 +1115,7 @@ async function doReset() {
   const err = document.getElementById('r-err');
   const ok  = document.getElementById('r-ok');
   err.style.display = 'none';
-  ok.textContent = '✅ Contactez l'administrateur à iqra.secretariat@gmail.com pour réinitialiser votre mot de passe.';
+  ok.textContent = "✅ Contactez l'administrateur à iqra.secretariat@gmail.com pour réinitialiser votre mot de passe.";
   ok.style.display = 'block';
 }
 
@@ -1062,8 +1131,6 @@ async function doLogout() {
 }
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
-
-const ADMIN_EMAIL = 'iqra.secretariat@gmail.com';
 
 async function initApp() {
   const email = curUser?.email || '';
@@ -2669,6 +2736,15 @@ function populateFamilleSelect(val) {
 document.addEventListener('DOMContentLoaded', async function() {
   const today = new Date().toISOString().slice(0,10);
   document.querySelectorAll('input[type="date"]').forEach(function(d){ if(!d.value) d.value = today; });
+
+  // ── Vérification clé Supabase au démarrage ──
+  if (!sbKeyValid(SUPABASE_KEY)) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#d85a30;color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:600;z-index:9999;line-height:1.5';
+    banner.innerHTML = '⚠️ SUPABASE_KEY non configurée — ouvre le fichier HTML, remplace <code style="background:rgba(0,0,0,.2);padding:1px 5px;border-radius:3px">COLLE_ICI_TA_CLE_ANON_SUPABASE_eyJ...</code> par ta vraie clé anon JWT depuis <a href="https://supabase.com/dashboard" target="_blank" style="color:#ffe0c8;text-decoration:underline">supabase.com/dashboard → Settings → API</a>';
+    document.body.prepend(banner);
+  }
+
   // Vérifier si session Supabase active (reconnexion automatique)
   await checkSession();
   // Auth géré par session localStorage
