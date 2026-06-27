@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Portail Iqrawartaqi — V6</title>
+<title>Portail Iqrawartaqi — V7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -278,7 +278,7 @@ tr:hover td{background:var(--g50)}
         Continuer avec Google
       </button>
       <div class="or-sep">ou</div>
-      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="votre@email.com" onkeypress="if(event.key==='Enter')doLogin()"></div>
+      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="votre@email.com" oninput="checkAdminEmail(this.value)" onkeypress="if(event.key==='Enter')doLogin()"></div>
       <div class="fg"><label>Mot de passe</label><input type="password" id="l-pw" placeholder="••••••••" onkeypress="if(event.key==='Enter')doLogin()"></div>
       <div class="auth-err" id="l-err"></div>
       <button class="btn-main" id="l-btn" onclick="doLogin()">Se connecter</button>
@@ -1002,7 +1002,6 @@ function checkAdminEmail(val) {
   const profTab  = document.getElementById('rt-enseignant');
   if (isAdmin) {
     adminTab.classList.remove('hidden');
-    // Auto-select admin tab
     adminTab.classList.add('active');
     eleveTab.classList.remove('active');
     profTab.classList.remove('active');
@@ -1010,7 +1009,6 @@ function checkAdminEmail(val) {
   } else {
     adminTab.classList.add('hidden');
     adminTab.classList.remove('active');
-    // Restore previous tab if needed
     if (curRole === 'admin') {
       curRole = 'eleve';
       eleveTab.classList.add('active');
@@ -1019,7 +1017,6 @@ function checkAdminEmail(val) {
 }
 
 function setRole(r) {
-  if (r === 'admin') return; // onglet admin non accessible manuellement
   curRole = r;
   document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
   const tab = document.getElementById('rt-' + r);
@@ -1096,7 +1093,9 @@ async function doLogin() {
     }
 
     curUser = { email, uid: email, name: userName };
+    // ✅ Forcer le rôle depuis la base — indépendamment de l'onglet sélectionné
     curRole = role;
+    if (email === ADMIN_EMAIL.toLowerCase()) curRole = 'admin';
 
     // 3. Sauvegarder session locale (24h)
     localStorage.setItem('iqra_session', JSON.stringify({
