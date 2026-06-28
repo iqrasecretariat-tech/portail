@@ -273,11 +273,6 @@ tr:hover td{background:var(--g50)}
       <button class="rtab active" id="rt-eleve" onclick="setRole('eleve')"><span>📚</span>Élève</button>
     </div>
     <div id="panel-login">
-      <button class="btn-google" id="g-btn" onclick="doGoogleLogin()">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.33 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.67 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-        Continuer avec Google
-      </button>
-      <div class="or-sep">ou</div>
       <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="votre@email.com" oninput="checkAdminEmail(this.value)" onkeypress="if(event.key==='Enter')doLogin()"></div>
       <div class="fg"><label>Mot de passe</label><input type="password" id="l-pw" placeholder="••••••••" onkeypress="if(event.key==='Enter')doLogin()"></div>
       <div class="auth-err" id="l-err"></div>
@@ -1892,7 +1887,7 @@ function openModalEleve(idx) {
   openModal('mo-eleve');
 }
 
-function saveEleve() {
+async function saveEleve() {
   const nom = document.getElementById('ne-nom').value.trim();
   const prenom = document.getElementById('ne-prenom').value.trim();
   if (!nom && !prenom) { toast('Veuillez entrer un nom','err'); return; }
@@ -1900,22 +1895,20 @@ function saveEleve() {
   const freq = document.getElementById('ne-freq').value;
   const duree = document.getElementById('ne-dur').value;
   const type = document.getElementById('ne-type').value;
-  // Calcul automatique du tarif depuis la grille — invisible côté élève/prof
   const tarifAuto = calcTarif(freq, duree, type);
   const tarifManuel = document.getElementById('ne-tarif').value;
   const tarifFinal = tarifManuel ? parseFloat(tarifManuel) : tarifAuto;
+  const emailEleve = document.getElementById('ne-email').value.trim();
   const data = {
     id: document.getElementById('ne-famille').value || 'E'+Date.now(),
     nom: (prenom+' '+nom).trim(),
     sexe: document.getElementById('ne-sexe').value,
     ddn: document.getElementById('ne-ddn').value,
-    email: document.getElementById('ne-email').value.trim(),
+    email: emailEleve,
     pays: document.getElementById('ne-pays').value.trim(),
     matiere: document.getElementById('ne-mat').value,
     prof: document.getElementById('ne-prof').value,
-    type,
-    duree,
-    freq,
+    type, duree, freq,
     statut: document.getElementById('ne-statut').value,
     lien: document.getElementById('ne-tg-lien').value.trim(),
     telegram: document.getElementById('ne-tg').value.trim(),
@@ -1925,22 +1918,39 @@ function saveEleve() {
     fraisSession: document.getElementById('ne-frais-session')?.checked ? 8 : 0,
     responsable: '', tel: '', commentaire: ''
   };
-  if (idx !== '') {
+  const isNew = idx === '';
+  if (!isNew) {
     Object.assign(ELEVES_DB[parseInt(idx)], data);
   } else {
     data.id = 'E' + Date.now();
     ELEVES_DB.push(data);
-    // Mettre à jour la famille si elle existe
     const fam = FAMILLES_DB.find(function(f){ return f.id === ('F_E'+(data.responsable||'').toLowerCase().trim()); });
     if (fam && data.nom && !fam.enfants.includes(data.nom)) fam.enfants.push(data.nom);
   }
-  // Nettoyer les champs non-Supabase avant sauvegarde
   const dataForDb = Object.assign({}, data);
   delete dataForDb.tarifAuto;
   saveLocal();
-  sbSaveEleve(dataForDb).then(function(){
-    toast(idx!=='' ? 'Élève modifié : '+data.nom : 'Élève ajouté : '+data.nom);
-  });
+  await sbSaveEleve(dataForDb);
+
+  // ✅ Créer automatiquement le compte utilisateur si email renseigné et nouvel élève
+  if (isNew && emailEleve && emailEleve.includes('@')) {
+    const mdpTemp = 'Iqra2025!';
+    const pwHash = await hashPassword(mdpTemp);
+    const { error: userErr } = await sb.from('users').upsert({
+      email: emailEleve,
+      password: pwHash,
+      nom: data.nom,
+      role: 'eleve'
+    }, { onConflict: 'email', ignoreDuplicates: true });
+    if (!userErr) {
+      toast('✅ Élève ajouté — compte créé : ' + emailEleve + ' / ' + mdpTemp);
+    } else {
+      toast('Élève ajouté (compte existant ou sans email)', '');
+    }
+  } else {
+    toast(isNew ? 'Élève ajouté : '+data.nom : 'Élève modifié : '+data.nom);
+  }
+
   closeModal('mo-eleve');
   populateRapportSelect();
   if (curPage==='gest-eleves') showPage('gest-eleves');
@@ -1998,24 +2008,52 @@ function showPageProfDetail(profName) {
   openModal('mo-fiche');
 }
 
-function saveProf() {
+async function saveProf() {
   const prenom = document.getElementById('np-prenom').value.trim();
   const nom = document.getElementById('np-nom').value.trim();
   if (!prenom && !nom) { toast('Nom requis','err'); return; }
   const fullName = (prenom+' '+nom).trim();
+  const emailProf = document.getElementById('np-email').value.trim();
   const editNom = document.getElementById('np-edit-nom').value;
+  const profData = {
+    nom: fullName,
+    email: emailProf,
+    telegram: document.getElementById('np-tg').value.trim(),
+    programmes: document.getElementById('np-prog').value.trim(),
+    statut: document.getElementById('np-statut').value
+  };
+  const isNew = !editNom;
   if (editNom) {
     const idx = PROFS_EXTRA.findIndex(p=>p.nom===editNom);
-    if (idx>=0) PROFS_EXTRA[idx] = {nom:fullName, email:document.getElementById('np-email').value, telegram:document.getElementById('np-tg').value, programmes:document.getElementById('np-prog').value, statut:document.getElementById('np-statut').value};
+    if (idx>=0) PROFS_EXTRA[idx] = profData;
   } else {
     if (!PROFS_DB.includes(fullName) && !PROFS_EXTRA.find(p=>p.nom===fullName)) {
-      PROFS_EXTRA.push({nom:fullName, email:document.getElementById('np-email').value, telegram:document.getElementById('np-tg').value, programmes:document.getElementById('np-prog').value, statut:document.getElementById('np-statut').value});
+      PROFS_EXTRA.push(profData);
     }
   }
   saveLocal();
-  sbSaveProf({nom:fullName, email:document.getElementById('np-email').value.trim(), telegram:document.getElementById('np-tg').value.trim(), programmes:document.getElementById('np-prog').value.trim(), statut:document.getElementById('np-statut').value});
+  await sbSaveProf(profData);
+
+  // ✅ Créer automatiquement le compte utilisateur si email renseigné et nouveau prof
+  if (isNew && emailProf && emailProf.includes('@')) {
+    const mdpTemp = 'Iqra2025!';
+    const pwHash = await hashPassword(mdpTemp);
+    const { error: userErr } = await sb.from('users').upsert({
+      email: emailProf,
+      password: pwHash,
+      nom: fullName,
+      role: 'enseignant'
+    }, { onConflict: 'email', ignoreDuplicates: true });
+    if (!userErr) {
+      toast('✅ Enseignant ajouté — compte créé : ' + emailProf + ' / ' + mdpTemp);
+    } else {
+      toast('Enseignant ajouté (compte existant ou sans email)', '');
+    }
+  } else {
+    toast('Enseignant enregistré');
+  }
+
   closeModal('mo-prof');
-  toast('Enseignant enregistré');
   populateProfSelect();
   if (curPage==='gest-profs') showPage('gest-profs');
   if (curPage==='db') showPage('db');
