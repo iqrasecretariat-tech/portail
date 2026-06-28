@@ -836,14 +836,35 @@ function buildFamillesFromEleves() {
 async function sbSaveEleve(data) {
   if (!sb) { console.warn('Supabase non disponible'); return; }
   try {
-    const row = Object.assign({}, data);
-    delete row.tarifAuto; // pas de colonne tarifAuto dans Supabase
+    // ✅ Conversion camelCase → snake_case pour colonnes Supabase
+    const row = {
+      id:            data.id || '',
+      nom:           data.nom || '',
+      sexe:          data.sexe || '',
+      ddn:           data.ddn || '',
+      email:         data.email || '',
+      tel:           data.tel || '',
+      telegram:      data.telegram || '',
+      pays:          data.pays || '',
+      matiere:       data.matiere || '',
+      prof:          data.prof || '',
+      type:          data.type || '',
+      duree:         data.duree || '',
+      freq:          data.freq || '',
+      statut:        data.statut || 'actif',
+      lien:          data.lien || '',
+      tarif:         data.tarif || null,
+      options:       data.options || '',
+      frais_session: data.fraisSession || data.frais_session || 0,
+      responsable:   data.responsable || '',
+      commentaire:   data.commentaire || ''
+    };
     const { error } = await sb.from('eleves').upsert(row, { onConflict: 'id' });
     if (error) {
-      console.error('sbSaveEleve error:', error.message, '| data.id:', row.id);
+      console.error('sbSaveEleve error:', error.message, '| id:', row.id);
       toast('Erreur sauvegarde élève : ' + error.message, 'err');
     } else {
-      console.log('✅ Élève sauvegardé Supabase:', row.nom, '| id:', row.id);
+      console.log('✅ Élève sauvegardé Supabase:', row.nom);
     }
   } catch(e) { console.error('sbSaveEleve catch:', e); }
 }
